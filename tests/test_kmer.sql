@@ -10,13 +10,21 @@ SELECT 'ACGT'::kmer AS k1,
        'AGCT'::kmer AS k3;
 
 -- Test equality function and operator
-SELECT equals('ACGT'::kmer, 'ACGT'::kmer) AS should_be_true;
-SELECT equals('ACGT'::kmer, 'AGCT'::kmer) AS should_be_false;
-SELECT 'ACGT'::kmer = 'ACGT'::kmer AS operator_true;
-SELECT 'ACGT'::kmer = 'AGCT'::kmer AS operator_false;
+SELECT equals('ACGT'::kmer, 'ACGT'::kmer) AS equality_expected_true;
+SELECT equals('ACGT'::kmer, 'AGCT'::kmer) AS equality_expected_false;
+SELECT 'ACGT'::kmer = 'ACGT'::kmer AS equality_operator_true;
+SELECT 'ACGT'::kmer = 'AGCT'::kmer AS equality_operator_false;
 
 -- Test length function
 SELECT length('ACGT'::kmer) AS length_of_kmer;
+
+-- Tests starts_with(kmer, kmer) function
+SELECT starts_with('ACGT'::kmer, 'A'::kmer)      AS starts_with_expected_true;
+SELECT starts_with('ACGT'::kmer, 'ACGTA'::kmer)  AS starts_with_expected_false;
+
+-- 🧮 Same tests using operator syntax
+SELECT 'ACGT'::kmer ^@ 'A'::kmer      AS starts_with_op_test1_true;
+SELECT 'ACGT'::kmer ^@ 'CG'::kmer     AS starts_with_op_test2_false;
 
 -- Test using kmer in a table
 DROP TABLE IF EXISTS kmers;

@@ -163,3 +163,28 @@ length(PG_FUNCTION_ARGS)
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_INT32(k->length);
 }
+
+PG_FUNCTION_INFO_V1(starts_with);
+Datum
+starts_with(PG_FUNCTION_ARGS)
+{
+    Kmer *k = PG_GETARG_KMER_P(0);
+    Kmer *j = PG_GETARG_KMER_P(1);
+    bool result;
+    // If j is longer than k, k cannot start with j
+    if (j->length > k->length)
+        PG_RETURN_BOOL(false);
+    
+    // Create a mask for the relevant bits
+    uint64_t mask = (1ULL << (2 * j->length)) - 1;
+    
+    // Shift k's code right to align with j's length
+    uint64_t k_prefix = k->code >> (2 * (k->length - j->length));
+    
+    // Compare the prefixes
+    result = ((k_prefix & mask) == j->code);
+
+    PG_FREE_IF_COPY(k, 0);
+    PG_FREE_IF_COPY(j, 1);
+    PG_RETURN_BOOL(result);
+}

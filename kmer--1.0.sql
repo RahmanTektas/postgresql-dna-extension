@@ -60,6 +60,18 @@ CREATE OR REPLACE FUNCTION length(kmer)
   AS 'MODULE_PATHNAME', 'length'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION starts_with(kmer, kmer)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'starts_with'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+ 
+CREATE OPERATOR ^@ (
+  LEFTARG = kmer,
+  RIGHTARG = kmer,
+  PROCEDURE = starts_with
+);
+
 -- CREATE FUNCTION length(kmer)
 --   RETURNS integer
 --   AS 'MODULE_PATHNAME', 'kmer_length'
