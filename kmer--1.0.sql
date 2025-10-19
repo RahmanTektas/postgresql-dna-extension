@@ -30,10 +30,10 @@ CREATE OR REPLACE FUNCTION kmer_in(cstring)
   AS 'MODULE_PATHNAME'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE FUNCTION kmer_out(kmer)
+CREATE OR REPLACE FUNCTION kmer_out(kmer)
   RETURNS cstring
   AS 'MODULE_PATHNAME'
-  LANGUAGE C IMMUTABLE STRICT;
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE TYPE kmer (
   internallength = 8,    --8 bytes = 64 bits each kmer can store up to 32 nucleotides (2 bits per nucleotide)
@@ -41,6 +41,30 @@ CREATE TYPE kmer (
   output = kmer_out,
   alignment = double
 );
+
+CREATE FUNCTION equals(kmer, kmer)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'equals'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR = (
+  LEFTARG = kmer,
+  RIGHTARG = kmer,
+  PROCEDURE = equals,
+  COMMUTATOR = =,     --says that a = b is the same as b = a
+  NEGATOR = <>        --says that the negation of a = b is a <> b
+);
+
+CREATE OR REPLACE FUNCTION length(kmer)
+  RETURNS integer
+  AS 'MODULE_PATHNAME', 'length'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+-- CREATE FUNCTION length(kmer)
+--   RETURNS integer
+--   AS 'MODULE_PATHNAME', 'kmer_length'
+--   LANGUAGE C IMMUTABLE STRICT;
+
 
 
 -- -- Type 3: QKMER
@@ -70,10 +94,6 @@ CREATE TYPE kmer (
 --   AS 'MODULE_PATHNAME', 'dna_length'
 --   LANGUAGE C IMMUTABLE STRICT;
 
--- CREATE FUNCTION length(kmer)
---   RETURNS integer
---   AS 'MODULE_PATHNAME', 'kmer_length'
---   LANGUAGE C IMMUTABLE STRICT;
 
 -- CREATE FUNCTION length(kmer)
 --   RETURNS integer
