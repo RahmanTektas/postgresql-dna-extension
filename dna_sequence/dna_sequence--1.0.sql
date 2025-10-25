@@ -116,17 +116,19 @@ CREATE OPERATOR ^@ (
 -- CREATE CAST (text as kmer) WITH FUNCTION kmer(text) AS IMPLICIT;
 -- CREATE CAST (kmer as text) WITH FUNCTION text(kmer);
 
+
+
 -------------- Qkmer --------------------------
 
--- CREATE OR REPLACE FUNCTION qkmer_in(cstring)
---    RETURNS qkmer
---     AS 'MODULE_PATHNAME'
---     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE OR REPLACE FUNCTION qkmer_in(cstring)
+   RETURNS qkmer
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
--- CREATE OR REPLACE FUNCTION qkmer_out(qkmer)
---    RETURNS cstring
---     AS 'MODULE_PATHNAME'
---     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE OR REPLACE FUNCTION qkmer_out(qkmer)
+   RETURNS cstring
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 /**CREATE OR REPLACE FUNCTION qkmer_recv(internal)
    RETURNS qkmer
@@ -138,14 +140,20 @@ CREATE OPERATOR ^@ (
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;*/
 
--- CREATE TYPE qkmer (
---     internallength = 8, 
---     input = qkmer_in,
---     output = qkmer_out,
---    -- receive = qkmer_recv,
---    -- send = qkmer_send,
---     alignment = int4  
--- );
+CREATE TYPE qkmer (
+    internallength = 8, 
+    input = qkmer_in,
+    output = qkmer_out,
+   -- receive = qkmer_recv,
+   -- send = qkmer_send,
+    alignment = int4  
+);
+
+CREATE FUNCTION length(qkmer)
+  RETURNS integer
+  AS 'MODULE_PATHNAME', 'qkmer_length'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
 
 -- CREATE CAST (text as qkmer) WITH FUNCTION qkmer(text) AS IMPLICIT;
 -- CREATE CAST (qkmer as text) WITH FUNCTION text(qkmer);
@@ -197,12 +205,6 @@ CREATE OPERATOR ^@ (
 /******************************************************************************
  * Operators
  ******************************************************************************/
-
--- CREATE FUNCTION length(qkmer)
---   RETURNS integer
---   AS 'MODULE_PATHNAME', 'qkmer_length'
---   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
 
 
 -- CREATE OPERATOR @> (

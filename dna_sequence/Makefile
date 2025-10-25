@@ -20,6 +20,7 @@ test:		# make test to run the tests
 	sudo -u postgres psql -d test_dna -c "CREATE EXTENSION dna_sequence;"
 	sudo -u postgres psql -d test_dna -f $(TEST_FOLDER)test_kmer.sql
 	sudo -u postgres psql -d test_dna -f $(TEST_FOLDER)test_dna.sql
+	sudo -u postgres psql -d test_dna -f $(TEST_FOLDER)test_qkmer.sql
 
 
 run :

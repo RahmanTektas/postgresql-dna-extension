@@ -25,6 +25,15 @@ PG_MODULE_MAGIC;
 #define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T) // N = 0001 | 0010 | 0100 | 1000
 
 /* --- Dna structure --- */
+
+/* --- Pointer conversion macros (must come first) --- */
+#define DnaPGetDatum(x)   PointerGetDatum(x)
+#define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
+
+/* --- Argument and return macros --- */
+#define PG_RETURN_DNA_P(x)  return DnaPGetDatum(x)
+#define PG_GETARG_DNA_P(n)  DatumGetDnaP(PG_GETARG_DATUM(n))
+
 typedef struct Dna
 {
     uint8_t *bases;
@@ -95,17 +104,17 @@ dna_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
     Dna *dna = dna_parse(str);   // parse string into dynamic array
-    PG_RETURN_POINTER(dna);
+    PG_RETURN_DNA_P(dna);
 }
 
 PG_FUNCTION_INFO_V1(dna_out);
 Datum
 dna_out(PG_FUNCTION_ARGS)
 {
-    Dna *dna = PG_GETARG_POINTER(0);
+    Dna *dna = PG_GETARG_DNA_P(0);
     char *str = dna_to_str(dna);
     PG_FREE_IF_COPY(dna, 0);
-    PG_RETURN_CSTRING(str);
+    PG_RETURN_DNA_P(str);
 }
 
 // PG_FUNCTION_INFO_V1(dna_equals);
@@ -141,7 +150,7 @@ PG_FUNCTION_INFO_V1(dna_length);
 Datum
 dna_length(PG_FUNCTION_ARGS)
 {
-    Dna *dna = PG_GETARG_POINTER(0);
+    Dna *dna = PG_GETARG_DNA_P(0);
     PG_FREE_IF_COPY(dna, 0);
     PG_RETURN_INT32(dna->length);
 }
@@ -175,7 +184,6 @@ dna_length(PG_FUNCTION_ARGS)
 typedef struct Kmer
 {
     uint8_t code[32];
-    // uint64_t code; /* 2 bits per base, up to 32 bases = 64 bits */
     uint8_t  length;    /* length of the kmer in bases */
 } Kmer;
 
@@ -366,4 +374,114 @@ kmer_starts_with(PG_FUNCTION_ARGS)
     PG_FREE_IF_COPY(k, 0);
     PG_FREE_IF_COPY(j, 1);
     PG_RETURN_BOOL(result);
+}
+
+
+
+/*  Qkmer  */
+
+
+/* --- QKmer structure --- */
+typedef struct Qkmer
+{
+    uint8_t code[32];
+    uint8_t  length;    /* length of the Qkmer in bases */
+} Qkmer;
+
+/* --- Pointer conversion macros (must come first) --- */
+#define QkmerPGetDatum(x)   PointerGetDatum(x)
+#define DatumGetQkmerP(x)   ((Qkmer *) DatumGetPointer(x))
+
+/* --- Argument and return macros --- */
+#define PG_RETURN_QKMER_P(x)  return QkmerPGetDatum(x)
+#define PG_GETARG_QKMER_P(n)  DatumGetQkmerP(PG_GETARG_DATUM(n))
+
+static Qkmer *
+qkmer_parse(char **str)
+{
+    const char *s = *str;
+    int len = strlen(s);
+
+    if (len == 0 || len > 32)
+        ereport(ERROR,
+                (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                 errmsg("invalid input syntax for type qkmer: \"%s\"", s),
+                 errdetail("qkmer must be 1–32 bases long")));
+
+    Qkmer *k = (Qkmer *) palloc0(sizeof(Qkmer));
+    k->length = len;
+
+    for (int i = 0; i < len; i++)
+    {
+        switch (s[i])
+        {
+            case 'A': case 'a': k->code[i] = BASE_A; break;
+            case 'C': case 'c': k->code[i] = BASE_C; break;
+            case 'G': case 'g': k->code[i] = BASE_G; break;
+            case 'T': case 't': k->code[i] = BASE_T; break;
+            case 'R': case 'r': k->code[i] = BASE_R; break;
+            case 'Y': case 'y': k->code[i] = BASE_Y; break;
+            case 'N': case 'n': k->code[i] = BASE_N; break;
+            default:
+                ereport(ERROR,
+                        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                         errmsg("invalid DNA base in qkmer: \"%c\"", s[i]),
+                         errdetail("Only A, C, G, T, R, Y, N are allowed.")));
+        }
+    }
+
+    return k;
+}
+
+static char *
+qkmer_to_str(const Qkmer *k)
+{
+    char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
+
+    for (int i = 0; i < k->length; i++)
+    {
+        uint8_t mask = k->code[i];
+
+        switch (mask)
+        {
+            case BASE_A: result[i] = 'A'; break;
+            case BASE_C: result[i] = 'C'; break;
+            case BASE_G: result[i] = 'G'; break;
+            case BASE_T: result[i] = 'T'; break;
+            case BASE_R: result[i] = 'R'; break;
+            case BASE_Y: result[i] = 'Y'; break;
+            case BASE_N: result[i] = 'N'; break;
+            default:     result[i] = '?';  /* au cas où le masque est invalide */
+        }
+    }
+
+    result[k->length] = '\0';  /* terminaison de chaîne */
+    return result;
+}
+
+PG_FUNCTION_INFO_V1(qkmer_in);
+Datum
+qkmer_in(PG_FUNCTION_ARGS)
+{
+    char *str = PG_GETARG_CSTRING(0);
+    PG_RETURN_QKMER_P(qkmer_parse(&str));
+}
+
+PG_FUNCTION_INFO_V1(qkmer_out);
+Datum
+qkmer_out(PG_FUNCTION_ARGS)
+{
+    Qkmer *k = PG_GETARG_QKMER_P(0);
+    char *result = qkmer_to_str(k);
+    PG_FREE_IF_COPY(k, 0);
+    PG_RETURN_CSTRING(result);
+}
+
+PG_FUNCTION_INFO_V1(qkmer_length);
+Datum
+qkmer_length(PG_FUNCTION_ARGS)
+{
+    Qkmer *k = PG_GETARG_QKMER_P(0);
+    PG_FREE_IF_COPY(k, 0);
+    PG_RETURN_INT32(k->length);
 }
