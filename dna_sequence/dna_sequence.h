@@ -32,6 +32,14 @@
 #define PG_GETARG_DNA_P(n)  DatumGetDnaP(PG_GETARG_DATUM(n))
 
 
+/* --- Pointer conversion macros (must come first) --- */
+#define QkmerPGetDatum(x)   PointerGetDatum(x)
+#define DatumGetQkmerP(x)   ((Qkmer *) DatumGetPointer(x))
+
+/* --- Argument and return macros --- */
+#define PG_RETURN_QKMER_P(x)  return QkmerPGetDatum(x)
+#define PG_GETARG_QKMER_P(n)  DatumGetQkmerP(PG_GETARG_DATUM(n))
+
 /* --- Dna structure --- */
 
 typedef struct Dna
@@ -39,4 +47,20 @@ typedef struct Dna
     uint8_t *bases;
     uint8_t length;    /* length of the dna in bases */
 } Dna;
+
+/* --- Kmer structure --- */
+typedef struct Kmer
+{
+    uint8_t code[32];
+    uint8_t  length;    /* length of the kmer in bases */
+} Kmer;
+
+/* --- QKmer structure --- */
+typedef struct Qkmer
+{
+    uint8_t code[32];
+    uint8_t  length;    /* length of the Qkmer in bases */
+} Qkmer;
+
+
 #endif

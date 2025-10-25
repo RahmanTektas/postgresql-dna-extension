@@ -12,6 +12,9 @@
 #include "libs/stb_ds.h"
 PG_MODULE_MAGIC;
 
+//////////////////////////// DNA ////////////////////////////
+
+
 /*
  * dna_parse - parse a dna from a string
  *
@@ -19,8 +22,7 @@ PG_MODULE_MAGIC;
  * If the string is invalid, an error is raised.
  */
 
-static Dna *
-dna_parse(const char *str)
+static Dna * dna_parse(const char *str)
 {
     Dna *dna = (Dna *) palloc(sizeof(Dna));
     dna->bases = NULL;
@@ -47,8 +49,7 @@ dna_parse(const char *str)
     return dna;
 }
 
-static char *
-dna_to_str(const Dna *dna)
+static char * dna_to_str(const Dna *dna)
 {
     char *result = palloc(dna->length + 1);  // +1 for '\0'
 
@@ -71,8 +72,7 @@ dna_to_str(const Dna *dna)
 }
 
 PG_FUNCTION_INFO_V1(dna_in);
-Datum
-dna_in(PG_FUNCTION_ARGS)
+Datum dna_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
     Dna *dna = dna_parse(str);   // parse string into dynamic array
@@ -80,9 +80,7 @@ dna_in(PG_FUNCTION_ARGS)
 }
 
 PG_FUNCTION_INFO_V1(dna_out);
-Datum
-dna_out(PG_FUNCTION_ARGS)
-{
+Datum dna_out(PG_FUNCTION_ARGS)
     Dna *dna = PG_GETARG_DNA_P(0);
     char *str = dna_to_str(dna);
     PG_FREE_IF_COPY(dna, 0);
@@ -90,20 +88,15 @@ dna_out(PG_FUNCTION_ARGS)
 }
 
 PG_FUNCTION_INFO_V1(dna_length);
-Datum
-dna_length(PG_FUNCTION_ARGS)
+Datum dna_length(PG_FUNCTION_ARGS)
 {
     Dna *dna = PG_GETARG_DNA_P(0);
     PG_FREE_IF_COPY(dna, 0);
     PG_RETURN_INT32(dna->length);
 }
 
-/* --- Kmer structure --- */
-typedef struct Kmer
-{
-    uint8_t code[32];
-    uint8_t  length;    /* length of the kmer in bases */
-} Kmer;
+//////////////////////////// KMER ////////////////////////////
+
 
 /*
  * kmer_parse - parse a kmer from a string
@@ -112,8 +105,7 @@ typedef struct Kmer
  * The string is expected to represent a kmer in a specific format (e.g., "ACGT").
  * If the string is invalid, an error is raised.
  */
-static Kmer *
-kmer_parse(char **str)
+static Kmer * kmer_parse(char **str)
 {
     const char *s = *str;
     int len = strlen(s);
@@ -146,8 +138,7 @@ kmer_parse(char **str)
     return k;
 }
  
-static char *
-kmer_to_str(const Kmer *k)
+static char * kmer_to_str(const Kmer *k)
 {
     char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
 
@@ -170,16 +161,14 @@ kmer_to_str(const Kmer *k)
 }
 
 PG_FUNCTION_INFO_V1(kmer_in);
-Datum
-kmer_in(PG_FUNCTION_ARGS)
+Datum kmer_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
     PG_RETURN_KMER_P(kmer_parse(&str));
 }
 
 PG_FUNCTION_INFO_V1(kmer_out);
-Datum
-kmer_out(PG_FUNCTION_ARGS)
+Datum kmer_out(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     char *result = kmer_to_str(k);
@@ -187,10 +176,8 @@ kmer_out(PG_FUNCTION_ARGS)
     PG_RETURN_CSTRING(result);
 }
 
-
 PG_FUNCTION_INFO_V1(kmer_equals);
-Datum
-kmer_equals(PG_FUNCTION_ARGS)
+Datum kmer_equals(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     Kmer *j = PG_GETARG_KMER_P(1);
@@ -220,8 +207,7 @@ kmer_equals(PG_FUNCTION_ARGS)
 }
 
 PG_FUNCTION_INFO_V1(kmer_length);
-Datum
-kmer_length(PG_FUNCTION_ARGS)
+Datum kmer_length(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     PG_FREE_IF_COPY(k, 0);
@@ -229,8 +215,7 @@ kmer_length(PG_FUNCTION_ARGS)
 }
 
 PG_FUNCTION_INFO_V1(kmer_starts_with);
-Datum
-kmer_starts_with(PG_FUNCTION_ARGS)
+Datum kmer_starts_with(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     Kmer *j = PG_GETARG_KMER_P(1);
@@ -256,23 +241,43 @@ kmer_starts_with(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(result);
 }
 
-/* --- QKmer structure --- */
-typedef struct Qkmer
+PG_FUNCTION_INFO_V1(qkmer_contains);
+Datum qkmer_contains(PG_FUNCTION_ARGS)
 {
-    uint8_t code[32];
-    uint8_t  length;    /* length of the Qkmer in bases */
-} Qkmer;
+    Qkmer *qk = PG_GETARG_QKMER_P(0);
+    Kmer *k = PG_GETARG_KMER_P(1);
+    bool result = true;
 
-/* --- Pointer conversion macros (must come first) --- */
-#define QkmerPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetQkmerP(x)   ((Qkmer *) DatumGetPointer(x))
+    if (qk->length != k->length) return false;
 
-/* --- Argument and return macros --- */
-#define PG_RETURN_QKMER_P(x)  return QkmerPGetDatum(x)
-#define PG_GETARG_QKMER_P(n)  DatumGetQkmerP(PG_GETARG_DATUM(n))
+    for (size_t i = 0; i < k->length; i++){
+        if(k->code[i] == qk->code[i]) continue;
 
-static Qkmer *
-qkmer_parse(char **str)
+        else if (qk->code[i] == BASE_R && (k->code[i] == BASE_A || k->code[i] == BASE_G)) continue;
+        else if (qk->code[i] == BASE_Y && (k->code[i] == BASE_C || k->code[i] == BASE_T)) continue;
+        else if (qk->code == BASE_N) continue;                                    
+
+        result = false;
+        break;
+    }
+    PG_FREE_IF_COPY(qk, 0);
+    PG_FREE_IF_COPY(k, 1);
+    PG_RETURN_BOOL(result);
+}
+
+PG_FUNCTION_INFO_V1(generate_kmers);
+Datum generate_kmers(PG_FUNCTION_ARGS)
+{
+
+
+
+}
+
+
+
+//////////////////////////// QKMER ////////////////////////////
+
+static Qkmer * qkmer_parse(char **str)
 {
     const char *s = *str;
     int len = strlen(s);
@@ -309,8 +314,7 @@ qkmer_parse(char **str)
     return k;
 }
 
-static char *
-qkmer_to_str(const Qkmer *k)
+static char * qkmer_to_str(const Qkmer *k)
 {
     char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
 
@@ -336,16 +340,14 @@ qkmer_to_str(const Qkmer *k)
 }
 
 PG_FUNCTION_INFO_V1(qkmer_in);
-Datum
-qkmer_in(PG_FUNCTION_ARGS)
+Datum qkmer_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
     PG_RETURN_QKMER_P(qkmer_parse(&str));
 }
 
 PG_FUNCTION_INFO_V1(qkmer_out);
-Datum
-qkmer_out(PG_FUNCTION_ARGS)
+Datum qkmer_out(PG_FUNCTION_ARGS)
 {
     Qkmer *k = PG_GETARG_QKMER_P(0);
     char *result = qkmer_to_str(k);
@@ -354,8 +356,7 @@ qkmer_out(PG_FUNCTION_ARGS)
 }
 
 PG_FUNCTION_INFO_V1(qkmer_length);
-Datum
-qkmer_length(PG_FUNCTION_ARGS)
+Datum qkmer_length(PG_FUNCTION_ARGS)
 {
     Qkmer *k = PG_GETARG_QKMER_P(0);
     PG_FREE_IF_COPY(k, 0);
