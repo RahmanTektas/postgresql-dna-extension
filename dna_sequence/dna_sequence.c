@@ -1,6 +1,7 @@
 #include <math.h>
 #include <float.h>
 #include <stdlib.h>
+#include "dna_sequence.h"
 #include "postgres.h"
 #include "fmgr.h"
 #include "libpq/pqformat.h"
@@ -9,37 +10,7 @@
 
 #define STB_DS_IMPLEMENTATION
 #include "libs/stb_ds.h"
-
 PG_MODULE_MAGIC;
-
-
-/*  DNA  */
-
-#define BASE_A 0x01 // A = 0001
-#define BASE_C 0x02 // C = 0010
-#define BASE_G 0x04 // G = 0100
-#define BASE_T 0x08 // T = 1000
-#define BASE_R (BASE_A | BASE_G) // R = 0001 | 0100
-#define BASE_Y (BASE_C | BASE_T) // Y = 0010 | 1000
-#define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T) // N = 0001 | 0010 | 0100 | 1000
-
-
-/* --- Pointer conversion macros (must come first) --- */
-#define DnaPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
-
-/* --- Argument and return macros --- */
-#define PG_RETURN_DNA_P(x)  return DnaPGetDatum(x)
-#define PG_GETARG_DNA_P(n)  DatumGetDnaP(PG_GETARG_DATUM(n))
-
-
-/* --- Dna structure --- */
-
-typedef struct Dna
-{
-    uint8_t *bases;
-    uint8_t length;    /* length of the dna in bases */
-} Dna;
 
 /*
  * dna_parse - parse a dna from a string
@@ -118,35 +89,6 @@ dna_out(PG_FUNCTION_ARGS)
     PG_RETURN_CSTRING(str);
 }
 
-// PG_FUNCTION_INFO_V1(dna_equals);
-// Datum
-// dna_equals(PG_FUNCTION_ARGS)
-// {
-//     Dna *a = PG_GETARG_POINTER(0);
-//     Dna *b = PG_GETARG_POINTER(1);
-
-//     if (a->length != b->length)
-//     {
-//         PG_FREE_IF_COPY(a, 0);
-//         PG_FREE_IF_COPY(b, 1);
-//         PG_RETURN_BOOL(false);
-//     }
-
-//     for (uint8_t i = 0; i < a->length; i++)
-//     {
-//         if (a->bases[i] != b->bases[i])
-//         {
-//             PG_FREE_IF_COPY(a, 0);
-//             PG_FREE_IF_COPY(b, 1);
-//             PG_RETURN_BOOL(false);
-//         }
-//     }
-
-//     PG_FREE_IF_COPY(a, 0);
-//     PG_FREE_IF_COPY(b, 1);
-//     PG_RETURN_BOOL(true);
-// }
-
 PG_FUNCTION_INFO_V1(dna_length);
 Datum
 dna_length(PG_FUNCTION_ARGS)
@@ -156,70 +98,12 @@ dna_length(PG_FUNCTION_ARGS)
     PG_RETURN_INT32(dna->length);
 }
 
-// PG_FUNCTION_INFO_V1(dna_starts_with);
-// Datum
-// dna_starts_with(PG_FUNCTION_ARGS)
-// {
-//     Dna *seq = PG_GETARG_POINTER(0);
-//     Dna *prefix = PG_GETARG_POINTER(1);
-
-//     if (prefix->length > seq->length)
-//         PG_RETURN_BOOL(false);
-
-//     for (uint8_t i = 0; i < prefix->length; i++)
-//     {
-//         if (seq->bases[i] != prefix->bases[i])
-//             PG_RETURN_BOOL(false);
-//     }
-
-//     PG_FREE_IF_COPY(seq, 0);
-//     PG_FREE_IF_COPY(prefix, 1);
-//     PG_RETURN_BOOL(true);
-// }
-
-
-
-/*  Kmer  */
-
 /* --- Kmer structure --- */
 typedef struct Kmer
 {
     uint8_t code[32];
     uint8_t  length;    /* length of the kmer in bases */
 } Kmer;
-
-/* --- Pointer conversion macros (must come first) --- */
-#define KmerPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetKmerP(x)   ((Kmer *) DatumGetPointer(x))
-
-/* --- Argument and return macros --- */
-#define PG_RETURN_KMER_P(x)  return KmerPGetDatum(x)
-#define PG_GETARG_KMER_P(n)  DatumGetKmerP(PG_GETARG_DATUM(n))
-
-// static Kmer *
-// kmer_make(uint64_t code, uint8_t length)
-// {
-//     // allocate zeroed memory for the struct (PostgreSQL’s allocator)
-//     Kmer *k = palloc0(sizeof(Kmer));
-
-//     // assign fields
-//     k->code = code;
-//     k->length = length;
-
-//     // sanity checks
-//     if (k->length == 0)
-//         ereport(ERROR,
-//                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-//                  errmsg("k-mer length cannot be zero")));
-
-//     if (k->length > 32)
-//         ereport(ERROR,
-//                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-//                  errmsg("k-mer length exceeds 32 bases")));
-
-//     // all good — return pointer
-//     return k;
-// }
 
 /*
  * kmer_parse - parse a kmer from a string
@@ -228,7 +112,6 @@ typedef struct Kmer
  * The string is expected to represent a kmer in a specific format (e.g., "ACGT").
  * If the string is invalid, an error is raised.
  */
-
 static Kmer *
 kmer_parse(char **str)
 {
@@ -286,7 +169,6 @@ kmer_to_str(const Kmer *k)
     return result;
 }
 
-
 PG_FUNCTION_INFO_V1(kmer_in);
 Datum
 kmer_in(PG_FUNCTION_ARGS)
@@ -337,8 +219,6 @@ kmer_equals(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(true);
 }
 
-
-
 PG_FUNCTION_INFO_V1(kmer_length);
 Datum
 kmer_length(PG_FUNCTION_ARGS)
@@ -347,7 +227,6 @@ kmer_length(PG_FUNCTION_ARGS)
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_INT32(k->length);
 }
-
 
 PG_FUNCTION_INFO_V1(kmer_starts_with);
 Datum
@@ -376,11 +255,6 @@ kmer_starts_with(PG_FUNCTION_ARGS)
     PG_FREE_IF_COPY(j, 1);
     PG_RETURN_BOOL(result);
 }
-
-
-
-/*  Qkmer  */
-
 
 /* --- QKmer structure --- */
 typedef struct Qkmer
