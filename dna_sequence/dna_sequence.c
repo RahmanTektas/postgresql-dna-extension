@@ -414,15 +414,16 @@ qkmer_parse(char **str)
 
     for (int i = 0; i < len; i++)
     {
-        switch (s[i])
+        char c = toupper(s[i]);
+        switch (c)
         {
-            case 'A': case 'a': k->code[i] = BASE_A; break;
-            case 'C': case 'c': k->code[i] = BASE_C; break;
-            case 'G': case 'g': k->code[i] = BASE_G; break;
-            case 'T': case 't': k->code[i] = BASE_T; break;
-            case 'R': case 'r': k->code[i] = BASE_R; break;
-            case 'Y': case 'y': k->code[i] = BASE_Y; break;
-            case 'N': case 'n': k->code[i] = BASE_N; break;
+            case 'A': k->code[i] = BASE_A; break;
+            case 'C': k->code[i] = BASE_C; break;
+            case 'G': k->code[i] = BASE_G; break;
+            case 'T': k->code[i] = BASE_T; break;
+            case 'R': k->code[i] = BASE_R; break;
+            case 'Y': k->code[i] = BASE_Y; break;
+            case 'N': k->code[i] = BASE_N; break;
             default:
                 ereport(ERROR,
                         (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
