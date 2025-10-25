@@ -10,10 +10,53 @@ PG_MODULE_MAGIC;
 
 #define EPSILON         1.0E-06
 
+/*  DNA  */
+
+#define BASE_A 0x01 // A = 0001
+#define BASE_C 0x02 // C = 0010
+#define BASE_G 0x04 // G = 0100
+#define BASE_T 0x08 // T = 1000
+#define BASE_R (BASE_A | BASE_G) // R = 0001 | 0100
+#define BASE_Y (BASE_C | BASE_T) // Y = 0010 | 1000
+#define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T) // N = 0001 | 0010 | 0100 | 1000
+
+/* --- Dna structure --- */
+// typedef struct Dna
+// {
+//     uint8_t code;
+//     uint8_t  length;    /* length of the dna in bases */
+// } Dna;
+
+/*
+ * dna_parse - parse a dna from a string
+ *
+ * This function takes a pointer to a string and parses it into a Dna structure.
+ * If the string is invalid, an error is raised.
+ */
+// static DNA *
+// dna_parse(char **str)
+// {
+//     const char *s = *str;
+//     int len = strlen(s);
+
+// }
+
+// PG_FUNCTION_INFO_V1(dna_in);
+// Datum
+// dna_in(PG_FUNCTION_ARGS)
+// {
+//     char *str = PG_GETARG_CSTRING(0);
+    // PG_RETURN_KMER_P(kmer_parse(&str));
+// }
+
+
+/*  Kmer  */
+
 /* --- Kmer structure --- */
 typedef struct Kmer
 {
-    uint64_t code; /* 2 bits per base, up to 32 bases = 64 bits */
+    uint8_t[32] = code;
+    // uint64_t code; /* 2 bits per base, up to 32 bases = 64 bits */
     uint8_t  length;    /* length of the kmer in bases */
 } Kmer;
 
@@ -25,7 +68,6 @@ typedef struct Kmer
 #define PG_RETURN_KMER_P(x)  return KmerPGetDatum(x)
 #define PG_GETARG_KMER_P(n)  DatumGetKmerP(PG_GETARG_DATUM(n))
 
-/*****************************************************************************/
 static Kmer *
 kmer_make(uint64_t code, uint8_t length)
 {
@@ -58,16 +100,12 @@ kmer_make(uint64_t code, uint8_t length)
  * The string is expected to represent a kmer in a specific format (e.g., "ACGT").
  * If the string is invalid, an error is raised.
  */
+
 static Kmer *
 kmer_parse(char **str)
 {
     const char *s = *str;
     int len = strlen(s);
-
-    /* declare variables up-front to avoid mixed-declarations-and-code warning */
-    Kmer *k;
-    uint64_t bits = 0;
-    int i;
 
     if (len == 0 || len > 32)
         ereport(ERROR,
@@ -75,15 +113,17 @@ kmer_parse(char **str)
                  errmsg("invalid input syntax for type kmer: \"%s\"", s),
                  errdetail("kmer must be 1–32 bases long")));
 
-    for (i = 0; i < len; i++)
+    Kmer *k = (Kmer *) palloc0(sizeof(Kmer));
+    k->length = len;
+
+    for (int i = 0; i < len; i++)
     {
-        bits <<= 2;  /* make room for next base */
         switch (s[i])
         {
-            case 'A': case 'a': bits |= 0b00; break;
-            case 'C': case 'c': bits |= 0b01; break;
-            case 'G': case 'g': bits |= 0b10; break;
-            case 'T': case 't': bits |= 0b11; break;
+            case 'A': case 'a': k->code[i] = BASE_A; break;
+            case 'C': case 'c': k->code[i] = BASE_C; break;
+            case 'G': case 'g': k->code[i] = BASE_G; break;
+            case 'T': case 't': k->code[i] = BASE_T; break;
             default:
                 ereport(ERROR,
                         (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
@@ -92,33 +132,29 @@ kmer_parse(char **str)
         }
     }
 
-    /* Allocate and fill struct */
-    k = (Kmer *) palloc(sizeof(Kmer));
-    k->code = bits;
-    k->length = len;
-
     return k;
 }
-
-/*
- * kmer_to_str - convert a Kmer structure back to its string representation
- */
+ 
 static char *
 kmer_to_str(const Kmer *k)
 {
-    static const char bases[4] = {'A', 'C', 'G', 'T'};
-    char *result = palloc(k->length + 1);  /* +1 for null terminator */
-    uint64_t bits = k->code;
-    int i;
+    char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
 
-    /* Extract bases in reverse (since we encoded left→right) */
-    for (i = (int)k->length - 1; i >= 0; i--)
+    for (int i = 0; i < k->length; i++)
     {
-        result[i] = bases[bits & 0b11];  /* decode last 2 bits */
-        bits >>= 2;                      /* move to next base */
+        uint8_t mask = k->code[i];
+
+        switch (mask)
+        {
+            case BASE_A: result[i] = 'A'; break;
+            case BASE_C: result[i] = 'C'; break;
+            case BASE_G: result[i] = 'G'; break;
+            case BASE_T: result[i] = 'T'; break;
+            default:     result[i] = '?';  /* au cas où le masque est invalide */
+        }
     }
 
-    result[k->length] = '\0';  /* null-terminate string */
+    result[k->length] = '\0';  /* terminaison de chaîne */
     return result;
 }
 
@@ -141,9 +177,9 @@ kmer_out(PG_FUNCTION_ARGS)
     PG_RETURN_CSTRING(result);
 }
 
-PG_FUNCTION_INFO_V1(equals);
+PG_FUNCTION_INFO_V1(kmer_equals);
 Datum
-equals(PG_FUNCTION_ARGS)
+kmer_equals(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     Kmer *j = PG_GETARG_KMER_P(1);
@@ -155,18 +191,21 @@ equals(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(k->code == j->code);
 }
 
-PG_FUNCTION_INFO_V1(length);
+
+
+
+PG_FUNCTION_INFO_V1(kmer_length);
 Datum
-length(PG_FUNCTION_ARGS)
+kmer_length(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_INT32(k->length);
 }
 
-PG_FUNCTION_INFO_V1(starts_with);
+PG_FUNCTION_INFO_V1(kmer_starts_with);
 Datum
-starts_with(PG_FUNCTION_ARGS)
+kmer_starts_with(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     Kmer *j = PG_GETARG_KMER_P(1);
