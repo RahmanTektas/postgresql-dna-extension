@@ -1,5 +1,0 @@
-# kmer extension
-comment = 'kmer - input/ouput functions for complex type'
-default_version = '1.0'
-module_pathname = '$libdir/kmer'
-relocatable = true
