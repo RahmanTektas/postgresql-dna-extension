@@ -12,7 +12,6 @@
 
 PG_MODULE_MAGIC;
 
-#define EPSILON         1.0E-06
 
 /*  DNA  */
 
@@ -24,7 +23,6 @@ PG_MODULE_MAGIC;
 #define BASE_Y (BASE_C | BASE_T) // Y = 0010 | 1000
 #define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T) // N = 0001 | 0010 | 0100 | 1000
 
-/* --- Dna structure --- */
 
 /* --- Pointer conversion macros (must come first) --- */
 #define DnaPGetDatum(x)   PointerGetDatum(x)
@@ -33,6 +31,9 @@ PG_MODULE_MAGIC;
 /* --- Argument and return macros --- */
 #define PG_RETURN_DNA_P(x)  return DnaPGetDatum(x)
 #define PG_GETARG_DNA_P(n)  DatumGetDnaP(PG_GETARG_DATUM(n))
+
+
+/* --- Dna structure --- */
 
 typedef struct Dna
 {
@@ -114,7 +115,7 @@ dna_out(PG_FUNCTION_ARGS)
     Dna *dna = PG_GETARG_DNA_P(0);
     char *str = dna_to_str(dna);
     PG_FREE_IF_COPY(dna, 0);
-    PG_RETURN_DNA_P(str);
+    PG_RETURN_CSTRING(str);
 }
 
 // PG_FUNCTION_INFO_V1(dna_equals);
