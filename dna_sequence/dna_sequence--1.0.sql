@@ -37,15 +37,20 @@ CREATE TYPE dna (
     storage = extended
 );
 
-CREATE FUNCTION length(dna)
-  RETURNS integer
-  AS 'MODULE_PATHNAME', 'dna_length'
+-- Cast depuis text vers dna
+CREATE OR REPLACE FUNCTION dna(text)
+  RETURNS dna
+  AS 'MODULE_PATHNAME', 'dna_cast_from_text'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+-- Cast depuis dna vers text
+CREATE OR REPLACE FUNCTION text(dna)
+  RETURNS text
+  AS 'MODULE_PATHNAME', 'dna_cast_to_text'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-
--- CREATE CAST (text as dna) WITH FUNCTION dna(text) AS IMPLICIT;
--- CREATE CAST (dna as text) WITH FUNCTION text(dna);
+CREATE CAST (text as dna) WITH FUNCTION dna(text) AS IMPLICIT;
+CREATE CAST (dna as text) WITH FUNCTION text(dna);
 
 -------------- Kmer --------------------------
 
@@ -78,45 +83,20 @@ CREATE TYPE kmer (
     alignment = int4   /* fix later on*/ 
 );
 
-CREATE FUNCTION length(kmer)
-  RETURNS integer
-  AS 'MODULE_PATHNAME', 'kmer_length'
+-- Cast depuis text vers kmer
+CREATE OR REPLACE FUNCTION kmer(text)
+  RETURNS kmer
+  AS 'MODULE_PATHNAME', 'kmer_cast_from_text'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE FUNCTION equals(kmer, kmer)
-  RETURNS boolean
-  AS 'MODULE_PATHNAME', 'kmer_equals'
+-- Cast depuis kmer vers text
+CREATE OR REPLACE FUNCTION text(kmer)
+  RETURNS text
+  AS 'MODULE_PATHNAME', 'kmer_cast_to_text'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE FUNCTION contains(qkmer, kmer)
-   RETURNS boolean
-   AS 'MODULE_PATHNAME', 'qkmer_contains'
-   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE FUNCTION starts_with(kmer, kmer)
-  RETURNS boolean  
-  AS 'MODULE_PATHNAME', 'kmer_starts_with'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE FUNCTION generate_kmers(dna, integer)
-   RETURNS SETOF kmer
-   AS 'MODULE_PATHNAME', 'generate_kmers'
-   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE OPERATOR = (
-  LEFTARG = kmer, RIGHTARG = kmer,
-  PROCEDURE = equals,
-  COMMUTATOR = =, NEGATOR = <>
-);
-
-CREATE OPERATOR ^@ (
-  LEFTARG = kmer, RIGHTARG = kmer,
-  PROCEDURE = starts_with
-);
--- CREATE CAST (text as kmer) WITH FUNCTION kmer(text) AS IMPLICIT;
--- CREATE CAST (kmer as text) WITH FUNCTION text(kmer);
-
-
+CREATE CAST (text as kmer) WITH FUNCTION kmer(text) AS IMPLICIT;
+CREATE CAST (kmer as text) WITH FUNCTION text(kmer);
 
 -------------- Qkmer --------------------------
 
@@ -149,51 +129,34 @@ CREATE TYPE qkmer (
     alignment = int4  
 );
 
-CREATE FUNCTION length(qkmer)
-  RETURNS integer
-  AS 'MODULE_PATHNAME', 'qkmer_length'
+-- Cast depuis text vers qkmer
+CREATE OR REPLACE FUNCTION qkmer(text)
+  RETURNS qkmer
+  AS 'MODULE_PATHNAME', 'qkmer_cast_from_text'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+-- Cast depuis qkmer vers text
+CREATE OR REPLACE FUNCTION text(qkmer)
+  RETURNS text  
+  AS 'MODULE_PATHNAME', 'qkmer_cast_to_text'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 
--- CREATE CAST (text as qkmer) WITH FUNCTION qkmer(text) AS IMPLICIT;
--- CREATE CAST (qkmer as text) WITH FUNCTION text(qkmer);
+CREATE CAST (text as qkmer) WITH FUNCTION qkmer(text) AS IMPLICIT;
+CREATE CAST (qkmer as text) WITH FUNCTION text(qkmer);
 
 /******************************************************************************
  * Constructor
  ******************************************************************************/
 
--- -------------- DNA --------------------------
--- CREATE OR REPLACE FUNCTION dna(text)
---   RETURNS dna
---   AS 'MODULE_PATHNAME', 'dna_cast_from_text'
---   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+-- =================== DNA ===================
 
--- CREATE OR REPLACE FUNCTION text(dna)
---   RETURNS text
---   AS 'MODULE_PATHNAME', 'dna_cast_to_text'
---   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
--- -------------- Kmer --------------------------
--- CREATE OR REPLACE FUNCTION kmer(text)
---   RETURNS kmer
---   AS 'MODULE_PATHNAME', 'kmer_cast_from_text'
---   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+-- =================== KMER ===================
 
--- CREATE OR REPLACE FUNCTION text(kmer)
---   RETURNS text
---   AS 'MODULE_PATHNAME', 'kmer_cast_to_text'
---   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-  
--- -------------- Qkmer --------------------------
--- CREATE OR REPLACE FUNCTION qkmer(text)
---   RETURNS qkmer
---   AS 'MODULE_PATHNAME', 'qkmer_cast_from_text'
---   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
--- CREATE OR REPLACE FUNCTION text(qkmer)
---   RETURNS text
---   AS 'MODULE_PATHNAME', 'qkmer_cast_to_text'
---   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+-- =================== QKMER ===================
+
 
 /*****************************************************************************
  * Accessing values
@@ -205,8 +168,51 @@ CREATE FUNCTION length(qkmer)
 /******************************************************************************
  * Operators
  ******************************************************************************/
+CREATE FUNCTION length(dna)
+  RETURNS integer
+  AS 'MODULE_PATHNAME', 'dna_length'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+CREATE FUNCTION length(qkmer)
+  RETURNS integer
+  AS 'MODULE_PATHNAME', 'qkmer_length'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+CREATE FUNCTION length(kmer)
+  RETURNS integer
+  AS 'MODULE_PATHNAME', 'kmer_length'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION equals(kmer, kmer)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'kmer_equals'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION starts_with(kmer, kmer)
+  RETURNS boolean  
+  AS 'MODULE_PATHNAME', 'kmer_starts_with'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION generate_kmers(dna, integer)
+   RETURNS SETOF kmer
+   AS 'MODULE_PATHNAME', 'generate_kmers'
+   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION contains(qkmer, kmer)
+   RETURNS boolean
+   AS 'MODULE_PATHNAME', 'qkmer_contains'
+   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+   
+CREATE OPERATOR = (
+  LEFTARG = kmer, RIGHTARG = kmer,
+  PROCEDURE = equals,
+  COMMUTATOR = =, NEGATOR = <>
+);
+
+CREATE OPERATOR ^@ (
+  LEFTARG = kmer, RIGHTARG = kmer,
+  PROCEDURE = starts_with
+);
 CREATE OPERATOR @> (
    LEFTARG = qkmer, RIGHTARG = kmer,
    PROCEDURE = contains

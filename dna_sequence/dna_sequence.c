@@ -6,6 +6,7 @@
 #include "fmgr.h"
 #include "libpq/pqformat.h"
 #include "utils/fmgrprotos.h"
+#include "funcapi.h"  
 
 
 #define STB_DS_IMPLEMENTATION
@@ -22,7 +23,24 @@ PG_MODULE_MAGIC;
  * If the string is invalid, an error is raised.
  */
 
-static Dna * dna_parse(const char *str)
+PG_FUNCTION_INFO_V1(dna_cast_from_text);
+Datum dna_cast_from_text(PG_FUNCTION_ARGS)
+{
+    char *str = PG_GETARG_CSTRING(0);
+    Dna *dna = dna_parse(str);
+    PG_RETURN_DNA_P(dna);
+}
+
+PG_FUNCTION_INFO_V1(dna_cast_to_text);
+Datum dna_cast_to_text(PG_FUNCTION_ARGS)
+{
+    Dna *dna = PG_GETARG_DNA_P(0);
+    char *str = dna_to_str(dna);
+    PG_FREE_IF_COPY(dna, 0);
+    PG_RETURN_CSTRING(str);
+}
+
+Dna * dna_parse(const char *str)
 {
     Dna *dna = (Dna *) palloc(sizeof(Dna));
     dna->bases = NULL;
@@ -49,7 +67,7 @@ static Dna * dna_parse(const char *str)
     return dna;
 }
 
-static char * dna_to_str(const Dna *dna)
+char * dna_to_str(const Dna *dna)
 {
     char *result = palloc(dna->length + 1);  // +1 for '\0'
 
@@ -81,6 +99,7 @@ Datum dna_in(PG_FUNCTION_ARGS)
 
 PG_FUNCTION_INFO_V1(dna_out);
 Datum dna_out(PG_FUNCTION_ARGS)
+{
     Dna *dna = PG_GETARG_DNA_P(0);
     char *str = dna_to_str(dna);
     PG_FREE_IF_COPY(dna, 0);
@@ -97,6 +116,22 @@ Datum dna_length(PG_FUNCTION_ARGS)
 
 //////////////////////////// KMER ////////////////////////////
 
+PG_FUNCTION_INFO_V1(kmer_cast_from_text);
+Datum kmer_cast_from_text(PG_FUNCTION_ARGS)
+{
+    char *str = PG_GETARG_CSTRING(0);
+    Kmer *k = kmer_parse(&str);   // utilise ta fonction interne
+    PG_RETURN_KMER_P(k);
+}
+
+PG_FUNCTION_INFO_V1(kmer_cast_to_text);
+Datum kmer_cast_to_text(PG_FUNCTION_ARGS)
+{
+    Kmer *k = PG_GETARG_KMER_P(0);
+    char *str = kmer_to_str(k);   // utilise ta fonction interne
+    PG_FREE_IF_COPY(k, 0);
+    PG_RETURN_CSTRING(str);
+}
 
 /*
  * kmer_parse - parse a kmer from a string
@@ -105,7 +140,7 @@ Datum dna_length(PG_FUNCTION_ARGS)
  * The string is expected to represent a kmer in a specific format (e.g., "ACGT").
  * If the string is invalid, an error is raised.
  */
-static Kmer * kmer_parse(char **str)
+Kmer * kmer_parse(char **str)
 {
     const char *s = *str;
     int len = strlen(s);
@@ -138,7 +173,7 @@ static Kmer * kmer_parse(char **str)
     return k;
 }
  
-static char * kmer_to_str(const Kmer *k)
+char * kmer_to_str(const Kmer *k)
 {
     char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
 
@@ -255,7 +290,7 @@ Datum qkmer_contains(PG_FUNCTION_ARGS)
 
         else if (qk->code[i] == BASE_R && (k->code[i] == BASE_A || k->code[i] == BASE_G)) continue;
         else if (qk->code[i] == BASE_Y && (k->code[i] == BASE_C || k->code[i] == BASE_T)) continue;
-        else if (qk->code == BASE_N) continue;                                    
+        else if (qk->code[i] == BASE_N) continue;                                    
 
         result = false;
         break;
@@ -268,16 +303,85 @@ Datum qkmer_contains(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(generate_kmers);
 Datum generate_kmers(PG_FUNCTION_ARGS)
 {
+    FuncCallContext *funcctx;
+    generate_kmers_fctx *fctx;
 
+    if (SRF_IS_FIRSTCALL())
+    {
+        MemoryContext oldcontext;
+        funcctx = SRF_FIRSTCALL_INIT();
+        oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
+        Dna *dna = PG_GETARG_DNA_P(0);
+        int k = PG_GETARG_INT32(1);
 
+        if (k <= 0 || k > dna->length)
+            ereport(ERROR, (errmsg("Invalid k")));
+
+        fctx = palloc(sizeof(generate_kmers_fctx));
+        fctx->dna_length = dna->length;
+        fctx->k = k;
+        fctx->num_kmers = dna->length - k + 1;
+        fctx->bases = palloc(dna->length);
+        memcpy(fctx->bases, dna->bases, dna->length);
+
+        funcctx->user_fctx = fctx;
+        funcctx->max_calls = fctx->num_kmers;
+
+        MemoryContextSwitchTo(oldcontext);
+    }
+
+    funcctx = SRF_PERCALL_SETUP();
+    fctx = funcctx->user_fctx;
+
+    int call_cntr = funcctx->call_cntr;
+
+    if (call_cntr < fctx->num_kmers)
+    {
+        // Allouer et remplir un Kmer
+        Kmer *kmer = palloc0(sizeof(Kmer));
+        kmer->length = fctx->k;
+
+        for (int i = 0; i < fctx->k; i++)
+        {
+            char base = toupper(fctx->bases[call_cntr + i]);
+            switch (base)
+            {
+                case 'A': kmer->code[i] = BASE_A; break;
+                case 'C': kmer->code[i] = BASE_C; break;
+                case 'G': kmer->code[i] = BASE_G; break;
+                case 'T': kmer->code[i] = BASE_T; break;
+            }
+        }
+
+        SRF_RETURN_NEXT(funcctx, PointerGetDatum(kmer));
+    }
+    else
+    {
+        SRF_RETURN_DONE(funcctx);
+    }
 }
 
 
-
 //////////////////////////// QKMER ////////////////////////////
+PG_FUNCTION_INFO_V1(qkmer_cast_from_text);
+Datum qkmer_cast_from_text(PG_FUNCTION_ARGS)
+{
+    char *str = PG_GETARG_CSTRING(0);
+    Qkmer *qk = qkmer_parse(&str);   // appelle la fonction static interne
+    PG_RETURN_QKMER_P(qk);
+}
 
-static Qkmer * qkmer_parse(char **str)
+PG_FUNCTION_INFO_V1(qkmer_cast_to_text);
+Datum qkmer_cast_to_text(PG_FUNCTION_ARGS)
+{
+    Qkmer *qk = PG_GETARG_QKMER_P(0);
+    char *str = qkmer_to_str(qk);    // appelle la fonction static interne
+    PG_FREE_IF_COPY(qk, 0);
+    PG_RETURN_CSTRING(str);
+}
+
+Qkmer * qkmer_parse(char **str)
 {
     const char *s = *str;
     int len = strlen(s);
@@ -314,7 +418,7 @@ static Qkmer * qkmer_parse(char **str)
     return k;
 }
 
-static char * qkmer_to_str(const Qkmer *k)
+char * qkmer_to_str(const Qkmer *k)
 {
     char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
 

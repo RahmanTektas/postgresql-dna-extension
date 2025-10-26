@@ -1,5 +1,7 @@
 #ifndef DNA_SEQUENCE_H
 #define DNA_SEQUENCE_H
+
+#include <stdint.h> 
 #include <math.h>
 #include <float.h>
 #include <stdlib.h>
@@ -41,7 +43,6 @@
 #define PG_GETARG_QKMER_P(n)  DatumGetQkmerP(PG_GETARG_DATUM(n))
 
 /* --- Dna structure --- */
-
 typedef struct Dna
 {
     uint8_t *bases;
@@ -62,5 +63,19 @@ typedef struct Qkmer
     uint8_t  length;    /* length of the Qkmer in bases */
 } Qkmer;
 
+typedef struct {
+        char *bases;
+        int dna_length;
+        int k;
+        int num_kmers;
+    } generate_kmers_fctx;
+
+// Prototypes des fonctions internes
+Dna    *dna_parse(const char *str);
+char   *dna_to_str(const Dna *dna);
+Kmer   *kmer_parse(char **str);
+char   *kmer_to_str(const Kmer *k);
+Qkmer  *qkmer_parse(char **str);
+char   *qkmer_to_str(const Qkmer *k);
 
 #endif
