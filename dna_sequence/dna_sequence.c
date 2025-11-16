@@ -6,6 +6,7 @@
 #include "libpq/pqformat.h"
 #include "utils/fmgrprotos.h"
 #include "funcapi.h"  
+#include "utils/builtins.h"
 PG_MODULE_MAGIC;
 
 //////////////////////////// DNA ////////////////////////////

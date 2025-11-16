@@ -1,33 +1,28 @@
-EXTENSION   = dna_sequence
+EXTENSION   = dna_sequence 
 MODULES     = dna_sequence
 DATA        = dna_sequence--1.0.sql dna_sequence.control
 
 PG_CONFIG ?= pg_config
-PGXS = $(shell $(PG_CONFIG) --pgxs)
+PGXS := $(shell $(PG_CONFIG) --pgxs 2>/dev/null)
+ifneq ($(PGXS),)
 include $(PGXS)
+endif
 
-TEST_DB = postgres
-TEST_FOLDER = ../tests/
+TEST_FOLDER    = ../tests
 
-# -----------------------------
-# Build & Install (no sudo)
-# -----------------------------
-reinstall:
-	make clean
-	make
-	make install
+CONTAINER_NAME = info-h417-dna-extension
 
-# -----------------------------
-# Run tests inside Docker
-# -----------------------------
+TEST_DB        = postgres
+
+TEST_DOCKER_PSQL    = docker exec -i -u postgres $(CONTAINER_NAME) psql 
+
+docker-reinstall:
+	docker exec -u root $(CONTAINER_NAME) bash -lc "cd /extension/dna_sequence && make && make install"
+
 test:
-	psql -U postgres -d $(TEST_DB) -c "DROP EXTENSION IF EXISTS dna_sequence CASCADE;"
-	psql -U postgres -d $(TEST_DB) -c "CREATE EXTENSION dna_sequence;"
-	psql -U postgres -d $(TEST_DB) -f $(TEST_FOLDER)test_dna.sql
-	psql -U postgres -d $(TEST_DB) -f $(TEST_FOLDER)test_kmer.sql
-	psql -U postgres -d $(TEST_DB) -f $(TEST_FOLDER)test_qkmer.sql
+	$(TEST_DOCKER_PSQL) < $(TEST_FOLDER)/test_dna.sql
+	$(TEST_DOCKER_PSQL) < $(TEST_FOLDER)/test_kmer.sql
+	$(TEST_DOCKER_PSQL) < $(TEST_FOLDER)/test_qkmer.sql
 
-# -----------------------------
-# Shortcut: rebuild + test
-# -----------------------------
-run: reinstall test
+# Rebuild + tests
+run: docker-reinstall test
