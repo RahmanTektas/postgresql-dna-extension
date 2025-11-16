@@ -5,11 +5,18 @@
 #include "postgres.h"
 #include "fmgr.h"
 #include "utils/varlena.h"
-
 #include <stdint.h> 
 #include <math.h>
 #include <float.h>
 #include <stdlib.h>
+
+#include "fmgr.h"
+#include "libpq/pqformat.h"
+#include "utils/fmgrprotos.h"
+#include "funcapi.h"  
+#include "utils/builtins.h"
+
+PG_MODULE_MAGIC;
 
 /* --- Pointer conversion macros (must come first) --- */
 #define KmerPGetDatum(x)   PointerGetDatum(x)
@@ -52,7 +59,7 @@ typedef struct
 {
     int32 vl_len_;
     uint8_t length;
-    uint8_t pad[3];  /* padding to keep bases[] 4-byte aligned */
+    //uint8_t pad[3];  /* padding to keep bases[] 4-byte aligned */
     uint8_t bases[FLEXIBLE_ARRAY_MEMBER];
 } Dna;
 
@@ -71,13 +78,13 @@ typedef struct Qkmer
 } Qkmer;
 
 typedef struct {
-        char *bases;
-        int dna_length;
-        int k;
-        int num_kmers;
-    } generate_kmers_fctx;
+    char *bases;
+    int dna_length;
+    int k;
+    int num_kmers;
+} generate_kmers_fctx;
 
-// Prototypes des fonctions internes
+/* Function declarations */
 Dna    *dna_parse(const char *str);
 char   *dna_to_str(const Dna *dna);
 Kmer   *kmer_parse(char **str);

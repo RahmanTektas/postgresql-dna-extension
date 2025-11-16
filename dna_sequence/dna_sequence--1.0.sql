@@ -17,33 +17,19 @@ CREATE OR REPLACE FUNCTION dna_out(dna)
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-/**CREATE OR REPLACE FUNCTION dna_recv(internal)
-    RETURNS dna
-    AS 'MODULE_PATHNAME'
-    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;*/
-
-/**CREATE OR REPLACE FUNCTION dna_send(dna)
-    RETURNS bytea
-    AS 'MODULE_PATHNAME'
-    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;*/
-
 CREATE TYPE dna (
     internallength = VARIABLE,
     input = dna_in,
     output = dna_out,
-    --receive = dna_recv,
-    --send = dna_send,
-    alignment = int4,       /* fix later on*/
+    alignment = int4,       
     storage = extended
 );
 
--- Cast depuis text vers dna
 CREATE OR REPLACE FUNCTION dna(text)
   RETURNS dna
   AS 'MODULE_PATHNAME', 'dna_cast_from_text'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
--- Cast depuis dna vers text
 CREATE OR REPLACE FUNCTION text(dna)
   RETURNS text
   AS 'MODULE_PATHNAME', 'dna_cast_to_text'
@@ -70,13 +56,11 @@ CREATE TYPE kmer (
     output         = kmer_out
 );
 
--- Cast depuis text vers kmer
 CREATE OR REPLACE FUNCTION kmer(text)
   RETURNS kmer
   AS 'MODULE_PATHNAME', 'kmer_cast_from_text'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
--- Cast depuis kmer vers text
 CREATE OR REPLACE FUNCTION text(kmer)
   RETURNS text
   AS 'MODULE_PATHNAME', 'kmer_cast_to_text'
@@ -104,13 +88,11 @@ CREATE TYPE qkmer (
     alignment = int4  
 );
 
--- Cast depuis text vers qkmer
 CREATE OR REPLACE FUNCTION qkmer(text)
   RETURNS qkmer
   AS 'MODULE_PATHNAME', 'qkmer_cast_from_text'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
--- Cast depuis qkmer vers text
 CREATE OR REPLACE FUNCTION text(qkmer)
   RETURNS text  
   AS 'MODULE_PATHNAME', 'qkmer_cast_to_text'
@@ -121,28 +103,9 @@ CREATE CAST (text as qkmer) WITH FUNCTION qkmer(text) AS IMPLICIT;
 CREATE CAST (qkmer as text) WITH FUNCTION text(qkmer);
 
 /******************************************************************************
- * Constructor
+ * Functions
  ******************************************************************************/
 
--- =================== DNA ===================
-
-
--- =================== KMER ===================
-
-
--- =================== QKMER ===================
-
-
-/*****************************************************************************
- * Accessing values
- *****************************************************************************/
-
-
-
-
-/******************************************************************************
- * Operators
- ******************************************************************************/
 CREATE FUNCTION length(dna)
   RETURNS integer
   AS 'MODULE_PATHNAME', 'dna_length'
@@ -178,6 +141,12 @@ CREATE FUNCTION contains(qkmer, kmer)
    AS 'MODULE_PATHNAME', 'qkmer_contains'
    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
    
+
+
+/******************************************************************************
+  * Operators
+******************************************************************************/
+
 CREATE OPERATOR = (
   LEFTARG = kmer, RIGHTARG = kmer,
   PROCEDURE = equals,
@@ -188,6 +157,7 @@ CREATE OPERATOR ^@ (
   LEFTARG = kmer, RIGHTARG = kmer,
   PROCEDURE = starts_with
 );
+
 CREATE OPERATOR @> (
    LEFTARG = qkmer, RIGHTARG = kmer,
    PROCEDURE = contains

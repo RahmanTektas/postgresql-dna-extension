@@ -1,13 +1,4 @@
-#include <math.h>
-#include <float.h>
-#include <stdlib.h>
 #include "dna_sequence.h"
-#include "fmgr.h"
-#include "libpq/pqformat.h"
-#include "utils/fmgrprotos.h"
-#include "funcapi.h"  
-#include "utils/builtins.h"
-PG_MODULE_MAGIC;
 
 //////////////////////////// DNA ////////////////////////////
 
@@ -24,13 +15,11 @@ Dna *dna_parse(const char *str)
 {
     size_t len = strlen(str);
 
-    /* Optionnel : vérifier qu'on ne dépasse pas uint8_t */
     if (len > UINT8_MAX)
         ereport(ERROR,
                 (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
                  errmsg("DNA sequence too long (max %d bases)", UINT8_MAX)));
 
-    /* Première passe : valider tous les caractères */
     for (size_t i = 0; i < len; i++)
     {
         char c = toupper((unsigned char) str[i]);
@@ -46,7 +35,6 @@ Dna *dna_parse(const char *str)
         }
     }
 
-    /* Calculer la taille totale de la varlena */
     Size size = offsetof(Dna, bases) + len * sizeof(uint8_t);
 
     Dna *dna = (Dna *) palloc(size);
@@ -54,7 +42,6 @@ Dna *dna_parse(const char *str)
 
     dna->length = (uint8_t) len;
 
-    /* Deuxième passe : stocker les bases en majuscules */
     for (size_t i = 0; i < len; i++)
     {
         dna->bases[i] = (uint8_t) toupper((unsigned char) str[i]);
@@ -97,7 +84,6 @@ Datum dna_in(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(dna_cast_from_text);
 Datum dna_cast_from_text(PG_FUNCTION_ARGS)
 {
-    /* Ici l'argument SQL est de type text */
     text *txt = PG_GETARG_TEXT_P(0);
     char *str = text_to_cstring(txt);
 
@@ -155,6 +141,9 @@ Datum dna_length(PG_FUNCTION_ARGS)
     PG_FREE_IF_COPY(dna, 0);
     PG_RETURN_INT32(len);
 }
+
+//////////////////////////// KMER ////////////////////////////
+
 
 /*
  * kmer_parse - parse a kmer from a string
@@ -303,7 +292,7 @@ PG_FUNCTION_INFO_V1(kmer_cast_from_text);
 Datum kmer_cast_from_text(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
-    Kmer *k = kmer_parse(&str);   // utilise ta fonction interne
+    Kmer *k = kmer_parse(&str);
     PG_RETURN_KMER_P(k);
 }
 
@@ -311,12 +300,10 @@ PG_FUNCTION_INFO_V1(kmer_cast_to_text);
 Datum kmer_cast_to_text(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
-    char *str = kmer_to_str(k);   // utilise ta fonction interne
+    char *str = kmer_to_str(k);
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_CSTRING(str);
 }
-
-
 
 
 PG_FUNCTION_INFO_V1(qkmer_contains);
@@ -405,8 +392,9 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
     }
 }
 
-
 //////////////////////////// QKMER ////////////////////////////
+
+
 PG_FUNCTION_INFO_V1(qkmer_cast_from_text);
 Datum qkmer_cast_from_text(PG_FUNCTION_ARGS)
 {
