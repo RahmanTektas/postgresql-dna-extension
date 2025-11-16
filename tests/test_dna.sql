@@ -1,6 +1,3 @@
--- Run this file using:
---   psql -U postgres -d test_dna -f tests/test_dna.sql
-
 -- Clean state
 DROP EXTENSION IF EXISTS dna_sequence CASCADE;
 CREATE EXTENSION dna_sequence;
@@ -11,15 +8,6 @@ SELECT 'ACGT'::dna AS dna1,
        'ACGN'::dna AS dna2,
        'RYYN'::dna AS dna3;
 
--- ======================================================
--- Equality tests
--- ======================================================
--- SELECT equals('ACGT'::dna, 'ACGT'::dna) AS equality_expected_true;
--- SELECT equals('ACGT'::dna, 'AGGT'::dna) AS equality_expected_false;
-
--- -- Operator form (=)
--- SELECT 'ACGT'::dna = 'ACGT'::dna AS equality_op_true;
--- SELECT 'ACGT'::dna = 'AGGT'::dna AS equality_op_false;
 
 -- ======================================================
 -- Length tests

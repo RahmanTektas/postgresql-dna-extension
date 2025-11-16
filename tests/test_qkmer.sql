@@ -1,5 +1,3 @@
---psql -U postgres -d test_dna -f tests/test_qkmer.sql to run the file
-
 -- Drop & recreate the extension to ensure a clean state
 DROP EXTENSION IF EXISTS dna_sequence CASCADE;
 CREATE EXTENSION dna_sequence;
