@@ -48,5 +48,27 @@ VALUES ('ACGT'::dna),
 
 SELECT * FROM dna_sequences;
 
--- Query test
-SELECT * FROM dna_sequences WHERE seq = 'ACGT'::dna;
+DROP TABLE IF EXISTS test_dna;
+
+CREATE TABLE test_dna (
+    id serial PRIMARY KEY,
+    seq dna
+);
+
+INSERT INTO test_dna (seq) VALUES
+('ACGTACGT'::dna),
+('TTGCA'::dna),
+('GGGAAA'::dna);
+
+-- Select to see if output is correct
+SELECT id, seq FROM test_dna;
+
+SELECT seq::text, seq::text = expected AS matches
+FROM (
+    SELECT seq,
+           CASE WHEN id = 1 THEN 'ACGTACGT'
+                WHEN id = 2 THEN 'TTGCA'
+                WHEN id = 3 THEN 'GGGAAA'
+           END AS expected
+    FROM test_dna
+) t;

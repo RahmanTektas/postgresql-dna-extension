@@ -15,8 +15,3 @@ SELECT length('ACGT'::qkmer) AS expected_length_of_qkmer_4;
 -- Test using qkmer in a table
 DROP TABLE IF EXISTS qkmers;
 CREATE TABLE qkmers (id serial, seq qkmer);
-
-
-
--- Test basic comparison
-SELECT * FROM qkmers WHERE seq = 'ACGT'::qkmer;

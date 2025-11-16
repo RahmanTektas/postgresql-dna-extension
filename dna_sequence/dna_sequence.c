@@ -108,15 +108,30 @@ Datum dna_cast_from_text(PG_FUNCTION_ARGS)
 }
 
 PG_FUNCTION_INFO_V1(dna_cast_to_text);
-Datum dna_cast_to_text(PG_FUNCTION_ARGS)
+Datum
+dna_cast_to_text(PG_FUNCTION_ARGS)
 {
     Dna *dna = PG_GETARG_DNA_P(0);
-    char *str = dna_to_str(dna);
+    text *result;
+    char *str;
+    int len;
 
-    text *result = cstring_to_text(str);
+    if (dna == NULL || dna->length == 0)
+        PG_RETURN_TEXT_P(cstring_to_text(""));
 
+    /* Allocate buffer for string (length + 1 for null terminator) */
+    str = (char *) palloc(dna->length + 1);
+    
+    /* Copy bases to string */
+    for (int i = 0; i < dna->length; i++)
+    {
+        str[i] = dna->bases[i];
+    }
+    str[dna->length] = '\0';
+    
+    result = cstring_to_text(str);
     pfree(str);
-    PG_FREE_IF_COPY(dna, 0);
+    
     PG_RETURN_TEXT_P(result);
 }
 
