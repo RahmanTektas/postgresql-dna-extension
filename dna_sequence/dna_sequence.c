@@ -2,15 +2,10 @@
 #include <float.h>
 #include <stdlib.h>
 #include "dna_sequence.h"
-#include "postgres.h"
 #include "fmgr.h"
 #include "libpq/pqformat.h"
 #include "utils/fmgrprotos.h"
 #include "funcapi.h"  
-
-
-#define STB_DS_IMPLEMENTATION
-#include "libs/stb_ds.h"
 PG_MODULE_MAGIC;
 
 //////////////////////////// DNA ////////////////////////////
@@ -23,38 +18,24 @@ PG_MODULE_MAGIC;
  * If the string is invalid, an error is raised.
  */
 
-PG_FUNCTION_INFO_V1(dna_cast_from_text);
-Datum dna_cast_from_text(PG_FUNCTION_ARGS)
-{
-    char *str = PG_GETARG_CSTRING(0);
-    Dna *dna = dna_parse(str);
-    PG_RETURN_DNA_P(dna);
-}
 
-PG_FUNCTION_INFO_V1(dna_cast_to_text);
-Datum dna_cast_to_text(PG_FUNCTION_ARGS)
+Dna *dna_parse(const char *str)
 {
-    Dna *dna = PG_GETARG_DNA_P(0);
-    char *str = dna_to_str(dna);
-    PG_FREE_IF_COPY(dna, 0);
-    PG_RETURN_CSTRING(str);
-}
-
-Dna * dna_parse(const char *str)
-{
-    Dna *dna = (Dna *) palloc(sizeof(Dna));
-    dna->bases = NULL;
-    dna->length = 0;
-
     size_t len = strlen(str);
+
+    /* Optionnel : vérifier qu'on ne dépasse pas uint8_t */
+    if (len > UINT8_MAX)
+        ereport(ERROR,
+                (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+                 errmsg("DNA sequence too long (max %d bases)", UINT8_MAX)));
+
+    /* Première passe : valider tous les caractères */
     for (size_t i = 0; i < len; i++)
     {
-        char c = toupper(str[i]);
+        char c = toupper((unsigned char) str[i]);
         switch (c)
         {
             case 'A': case 'C': case 'G': case 'T':
-                arrput(dna->bases, c);  // stb_ds append
-                dna->length++;
                 break;
             default:
                 ereport(ERROR,
@@ -64,8 +45,23 @@ Dna * dna_parse(const char *str)
         }
     }
 
+    /* Calculer la taille totale de la varlena */
+    Size size = offsetof(Dna, bases) + len * sizeof(uint8_t);
+
+    Dna *dna = (Dna *) palloc(size);
+    SET_VARSIZE(dna, size);
+
+    dna->length = (uint8_t) len;
+
+    /* Deuxième passe : stocker les bases en majuscules */
+    for (size_t i = 0; i < len; i++)
+    {
+        dna->bases[i] = (uint8_t) toupper((unsigned char) str[i]);
+    }
+
     return dna;
 }
+
 
 char * dna_to_str(const Dna *dna)
 {
@@ -92,10 +88,39 @@ char * dna_to_str(const Dna *dna)
 PG_FUNCTION_INFO_V1(dna_in);
 Datum dna_in(PG_FUNCTION_ARGS)
 {
-    char *str = PG_GETARG_CSTRING(0);
-    Dna *dna = dna_parse(str);   // parse string into dynamic array
+    char *str = PG_GETARG_CSTRING(0);   /* input function: arg type cstring */
+    Dna *dna = dna_parse(str);
     PG_RETURN_DNA_P(dna);
 }
+
+PG_FUNCTION_INFO_V1(dna_cast_from_text);
+Datum dna_cast_from_text(PG_FUNCTION_ARGS)
+{
+    /* Ici l'argument SQL est de type text */
+    text *txt = PG_GETARG_TEXT_P(0);
+    char *str = text_to_cstring(txt);
+
+    Dna *dna = dna_parse(str);
+
+    pfree(str);
+    PG_FREE_IF_COPY(txt, 0);
+    PG_RETURN_DNA_P(dna);
+}
+
+PG_FUNCTION_INFO_V1(dna_cast_to_text);
+Datum dna_cast_to_text(PG_FUNCTION_ARGS)
+{
+    Dna *dna = PG_GETARG_DNA_P(0);
+    char *str = dna_to_str(dna);
+
+    text *result = cstring_to_text(str);
+
+    pfree(str);
+    PG_FREE_IF_COPY(dna, 0);
+    PG_RETURN_TEXT_P(result);
+}
+
+
 
 PG_FUNCTION_INFO_V1(dna_out);
 Datum dna_out(PG_FUNCTION_ARGS)
@@ -103,34 +128,16 @@ Datum dna_out(PG_FUNCTION_ARGS)
     Dna *dna = PG_GETARG_DNA_P(0);
     char *str = dna_to_str(dna);
     PG_FREE_IF_COPY(dna, 0);
-    PG_RETURN_CSTRING(str);
+    PG_RETURN_CSTRING(str);   /* output function retourne un cstring */
 }
 
 PG_FUNCTION_INFO_V1(dna_length);
 Datum dna_length(PG_FUNCTION_ARGS)
 {
     Dna *dna = PG_GETARG_DNA_P(0);
+    int32 len = dna->length;
     PG_FREE_IF_COPY(dna, 0);
-    PG_RETURN_INT32(dna->length);
-}
-
-//////////////////////////// KMER ////////////////////////////
-
-PG_FUNCTION_INFO_V1(kmer_cast_from_text);
-Datum kmer_cast_from_text(PG_FUNCTION_ARGS)
-{
-    char *str = PG_GETARG_CSTRING(0);
-    Kmer *k = kmer_parse(&str);   // utilise ta fonction interne
-    PG_RETURN_KMER_P(k);
-}
-
-PG_FUNCTION_INFO_V1(kmer_cast_to_text);
-Datum kmer_cast_to_text(PG_FUNCTION_ARGS)
-{
-    Kmer *k = PG_GETARG_KMER_P(0);
-    char *str = kmer_to_str(k);   // utilise ta fonction interne
-    PG_FREE_IF_COPY(k, 0);
-    PG_RETURN_CSTRING(str);
+    PG_RETURN_INT32(len);
 }
 
 /*
@@ -175,7 +182,7 @@ Kmer * kmer_parse(char **str)
  
 char * kmer_to_str(const Kmer *k)
 {
-    char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
+    char *result = palloc(k->length + 1);
 
     for (int i = 0; i < k->length; i++)
     {
@@ -187,11 +194,11 @@ char * kmer_to_str(const Kmer *k)
             case BASE_C: result[i] = 'C'; break;
             case BASE_G: result[i] = 'G'; break;
             case BASE_T: result[i] = 'T'; break;
-            default:     result[i] = '?';  /* au cas où le masque est invalide */
+            default:     result[i] = '?';  
         }
     }
 
-    result[k->length] = '\0';  /* terminaison de chaîne */
+    result[k->length] = '\0';
     return result;
 }
 
@@ -276,6 +283,26 @@ Datum kmer_starts_with(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(result);
 }
 
+PG_FUNCTION_INFO_V1(kmer_cast_from_text);
+Datum kmer_cast_from_text(PG_FUNCTION_ARGS)
+{
+    char *str = PG_GETARG_CSTRING(0);
+    Kmer *k = kmer_parse(&str);   // utilise ta fonction interne
+    PG_RETURN_KMER_P(k);
+}
+
+PG_FUNCTION_INFO_V1(kmer_cast_to_text);
+Datum kmer_cast_to_text(PG_FUNCTION_ARGS)
+{
+    Kmer *k = PG_GETARG_KMER_P(0);
+    char *str = kmer_to_str(k);   // utilise ta fonction interne
+    PG_FREE_IF_COPY(k, 0);
+    PG_RETURN_CSTRING(str);
+}
+
+
+
+
 PG_FUNCTION_INFO_V1(qkmer_contains);
 Datum qkmer_contains(PG_FUNCTION_ARGS)
 {
@@ -339,7 +366,7 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
     if (call_cntr < fctx->num_kmers)
     {
         // Allouer et remplir un Kmer
-        Kmer *kmer = palloc0(sizeof(Kmer));
+        Kmer *kmer = palloc0(sizeof(Kmer)+1);
         kmer->length = fctx->k;
 
         for (int i = 0; i < fctx->k; i++)
@@ -368,7 +395,7 @@ PG_FUNCTION_INFO_V1(qkmer_cast_from_text);
 Datum qkmer_cast_from_text(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
-    Qkmer *qk = qkmer_parse(&str);   // appelle la fonction static interne
+    Qkmer *qk = qkmer_parse(&str);
     PG_RETURN_QKMER_P(qk);
 }
 
@@ -376,7 +403,7 @@ PG_FUNCTION_INFO_V1(qkmer_cast_to_text);
 Datum qkmer_cast_to_text(PG_FUNCTION_ARGS)
 {
     Qkmer *qk = PG_GETARG_QKMER_P(0);
-    char *str = qkmer_to_str(qk);    // appelle la fonction static interne
+    char *str = qkmer_to_str(qk);
     PG_FREE_IF_COPY(qk, 0);
     PG_RETURN_CSTRING(str);
 }
@@ -420,7 +447,7 @@ Qkmer * qkmer_parse(char **str)
 
 char * qkmer_to_str(const Qkmer *k)
 {
-    char *result = palloc(k->length + 1);  /* +1 pour le '\0' */
+    char *result = palloc(k->length + 1); 
 
     for (int i = 0; i < k->length; i++)
     {
@@ -435,11 +462,11 @@ char * qkmer_to_str(const Qkmer *k)
             case BASE_R: result[i] = 'R'; break;
             case BASE_Y: result[i] = 'Y'; break;
             case BASE_N: result[i] = 'N'; break;
-            default:     result[i] = '?';  /* au cas où le masque est invalide */
+            default:     result[i] = '?'; 
         }
     }
 
-    result[k->length] = '\0';  /* terminaison de chaîne */
+    result[k->length] = '\0';
     return result;
 }
 

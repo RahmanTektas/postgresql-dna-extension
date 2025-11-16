@@ -1,6 +1,11 @@
 #ifndef DNA_SEQUENCE_H
 #define DNA_SEQUENCE_H
 
+/* PostgreSQL headers MUST come first */
+#include "postgres.h"
+#include "fmgr.h"
+#include "utils/varlena.h"
+
 #include <stdint.h> 
 #include <math.h>
 #include <float.h>
@@ -30,8 +35,8 @@
 #define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
 
 /* --- Argument and return macros --- */
-#define PG_RETURN_DNA_P(x)  return DnaPGetDatum(x)
-#define PG_GETARG_DNA_P(n)  DatumGetDnaP(PG_GETARG_DATUM(n))
+#define PG_GETARG_DNA_P(n) ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
+#define PG_RETURN_DNA_P(x) PG_RETURN_POINTER(x)
 
 
 /* --- Pointer conversion macros (must come first) --- */
@@ -43,10 +48,12 @@
 #define PG_GETARG_QKMER_P(n)  DatumGetQkmerP(PG_GETARG_DATUM(n))
 
 /* --- Dna structure --- */
-typedef struct Dna
+typedef struct
 {
-    uint8_t *bases;
-    uint8_t length;    /* length of the dna in bases */
+    int32 vl_len_;
+    uint8_t length;
+    uint8_t pad[3];  /* padding to keep bases[] 4-byte aligned */
+    uint8_t bases[FLEXIBLE_ARRAY_MEMBER];
 } Dna;
 
 /* --- Kmer structure --- */

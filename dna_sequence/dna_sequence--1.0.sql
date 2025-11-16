@@ -64,23 +64,10 @@ CREATE OR REPLACE FUNCTION kmer_out(kmer)
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-/**CREATE OR REPLACE FUNCTION kmer_recv(internal)
-   RETURNS kmer
-    AS 'MODULE_PATHNAME'
-    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;*/
-
-/**CREATE OR REPLACE FUNCTION kmer_send(kmer)
-   RETURNS bytea
-    AS 'MODULE_PATHNAME'
-    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;*/
-
 CREATE TYPE kmer (
-    internallength = 8, 
-    input = kmer_in,
-    output = kmer_out,
-    --receive = kmer_recv,
-    --send = kmer_send,
-    alignment = int4   /* fix later on*/ 
+    internallength = 33,          
+    input          = kmer_in,
+    output         = kmer_out
 );
 
 -- Cast depuis text vers kmer
@@ -110,22 +97,10 @@ CREATE OR REPLACE FUNCTION qkmer_out(qkmer)
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-/**CREATE OR REPLACE FUNCTION qkmer_recv(internal)
-   RETURNS qkmer
-    AS 'MODULE_PATHNAME'
-    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;*/
-
-/**CREATE OR REPLACE FUNCTION qkmer_send(qkmer)
-   RETURNS bytea
-    AS 'MODULE_PATHNAME'
-    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;*/
-
 CREATE TYPE qkmer (
     internallength = 8, 
     input = qkmer_in,
     output = qkmer_out,
-   -- receive = qkmer_recv,
-   -- send = qkmer_send,
     alignment = int4  
 );
 
