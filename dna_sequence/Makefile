@@ -1,28 +1,79 @@
-EXTENSION   = dna_sequence 
-MODULES     = dna_sequence
-DATA        = dna_sequence--1.0.sql dna_sequence.control
+# Makefile for PostgreSQL DNA Sequence Extension
 
-PG_CONFIG ?= pg_config
-PGXS := $(shell $(PG_CONFIG) --pgxs 2>/dev/null)
-ifneq ($(PGXS),)
+EXTENSION = dna_sequence
+DATA = dna_sequence--1.0.sql
+MODULES = dna_sequence
+
+PG_CONFIG = pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
-endif
 
-TEST_FOLDER    = ../tests
+# Docker Configuration
+DOCKER_CONTAINER = info-h417-dna-extension
+DOCKER_USER_ROOT = root
+DOCKER_USER_POSTGRES = postgres
+EXTENSION_DIR = /extension/dna_sequence
+TESTS_DIR = ../tests
 
-CONTAINER_NAME = info-h417-dna-extension
+# Command to compile and install in Docker
+.PHONY: docker-build
+docker-build:
+	docker exec -u $(DOCKER_USER_ROOT) $(DOCKER_CONTAINER) bash -lc "cd $(EXTENSION_DIR) && make clean && make && make install"
 
-TEST_DB        = postgres
+# Command to create the extension in PostgreSQL
+.PHONY: docker-create-extension
+docker-create-extension:
+	docker exec -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql -c "DROP EXTENSION IF EXISTS $(EXTENSION) CASCADE; CREATE EXTENSION $(EXTENSION);"
 
-TEST_DOCKER_PSQL    = docker exec -i -u postgres $(CONTAINER_NAME) psql 
+# Command to compile, install AND create the extension (complete solution)
+.PHONY: docker-reinstall
+docker-reinstall: docker-build docker-create-extension
+	@echo "Extension compiled, installed, and created successfully!"
 
-docker-reinstall:
-	docker exec -u root $(CONTAINER_NAME) bash -lc "cd /extension/dna_sequence && make && make install"
+# Command to run all tests
+.PHONY: run
+run: docker-reinstall
+	@echo "Running DNA tests..."
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_dna.sql
+	@echo "\nRunning KMER tests..."
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_kmer.sql
+	@echo "\nRunning QKMER tests..."
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_qkmer.sql
 
-test:
-	$(TEST_DOCKER_PSQL) < $(TEST_FOLDER)/test_dna.sql
-	$(TEST_DOCKER_PSQL) < $(TEST_FOLDER)/test_kmer.sql
-	$(TEST_DOCKER_PSQL) < $(TEST_FOLDER)/test_qkmer.sql
+# Command to test DNA only
+.PHONY: test-dna
+test-dna:
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_dna.sql
 
-# Rebuild + tests
-run: docker-reinstall test
+# Command to test KMER only
+.PHONY: test-kmer
+test-kmer:
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_kmer.sql
+
+# Command to test QKMER only
+.PHONY: test-qkmer
+test-qkmer:
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_qkmer.sql
+
+# Command to connect to psql
+.PHONY: psql
+psql:
+	docker exec -it $(DOCKER_CONTAINER) psql -U $(DOCKER_USER_POSTGRES)
+
+# Command to clean everything
+.PHONY: docker-clean
+docker-clean:
+	docker exec -u $(DOCKER_USER_ROOT) $(DOCKER_CONTAINER) bash -lc "cd $(EXTENSION_DIR) && make clean && rm -f *.o *.so *.bc"
+
+# Help
+.PHONY: help
+help:
+	@echo "Available commands:"
+	@echo "  make docker-reinstall  - Compile, install AND create extension in PostgreSQL"
+	@echo "  make run               - Reinstall extension and run all tests"
+	@echo "  make test-dna          - Run DNA tests only"
+	@echo "  make test-kmer         - Run KMER tests only"
+	@echo "  make test-qkmer        - Run QKMER tests only"
+	@echo "  make psql              - Connect to PostgreSQL"
+	@echo "  make docker-clean      - Clean all compiled files"
+	@echo "  make help              - Display this help message"

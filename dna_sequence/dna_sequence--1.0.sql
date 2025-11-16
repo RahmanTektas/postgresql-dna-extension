@@ -164,3 +164,17 @@ CREATE OPERATOR @> (
  );
 
 
+/******************************************************************************
+ * Hash Support for GROUP BY
+******************************************************************************/
+
+CREATE FUNCTION hash(kmer)
+  RETURNS integer
+  AS 'MODULE_PATHNAME', 'kmer_hash'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+-- Create hash operator class to enable GROUP BY
+CREATE OPERATOR CLASS kmer_hash_ops
+    DEFAULT FOR TYPE kmer USING hash AS
+    OPERATOR 1 = ,
+    FUNCTION 1 hash(kmer);

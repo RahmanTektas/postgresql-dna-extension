@@ -13,14 +13,20 @@
 
 Dna *dna_parse(const char *str)
 {
-    size_t len = strlen(str);
+    size_t len;
+    Size size;        
+    Dna *dna;         
+    size_t i;         
+    
+    
+    len = strlen(str);
 
     if (len > UINT8_MAX)
         ereport(ERROR,
                 (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
                  errmsg("DNA sequence too long (max %d bases)", UINT8_MAX)));
 
-    for (size_t i = 0; i < len; i++)
+    for (i = 0; i < len; i++)
     {
         char c = toupper((unsigned char) str[i]);
         switch (c)
@@ -35,14 +41,14 @@ Dna *dna_parse(const char *str)
         }
     }
 
-    Size size = offsetof(Dna, bases) + len * sizeof(uint8_t);
+    size = offsetof(Dna, bases) + len * sizeof(uint8_t);
 
-    Dna *dna = (Dna *) palloc(size);
+    dna = (Dna *) palloc(size);
     SET_VARSIZE(dna, size);
 
     dna->length = (uint8_t) len;
 
-    for (size_t i = 0; i < len; i++)
+    for (i = 0; i < len; i++)
     {
         dna->bases[i] = (uint8_t) toupper((unsigned char) str[i]);
     }
@@ -98,10 +104,12 @@ PG_FUNCTION_INFO_V1(dna_cast_to_text);
 Datum
 dna_cast_to_text(PG_FUNCTION_ARGS)
 {
-    Dna *dna = PG_GETARG_DNA_P(0);
+    Dna *dna;
     text *result;
     char *str;
-    int len;
+    int i; 
+
+    dna = PG_GETARG_DNA_P(0);
 
     if (dna == NULL || dna->length == 0)
         PG_RETURN_TEXT_P(cstring_to_text(""));
@@ -110,7 +118,7 @@ dna_cast_to_text(PG_FUNCTION_ARGS)
     str = (char *) palloc(dna->length + 1);
     
     /* Copy bases to string */
-    for (int i = 0; i < dna->length; i++)
+    for (i = 0; i < dna->length; i++)
     {
         str[i] = dna->bases[i];
     }
@@ -154,8 +162,13 @@ Datum dna_length(PG_FUNCTION_ARGS)
  */
 Kmer * kmer_parse(char **str)
 {
-    const char *s = *str;
-    int len = strlen(s);
+    const char *s;
+    int len;
+    Kmer *k;     
+    int i;      
+
+    s = *str;
+    len = strlen(s);
 
     if (len == 0 || len > 32)
         ereport(ERROR,
@@ -163,10 +176,10 @@ Kmer * kmer_parse(char **str)
                  errmsg("invalid input syntax for type kmer: \"%s\"", s),
                  errdetail("kmer must be 1–32 bases long")));
 
-    Kmer *k = (Kmer *) palloc0(sizeof(Kmer));
+    k = (Kmer *) palloc0(sizeof(Kmer));
     k->length = len;
 
-    for (int i = 0; i < len; i++)
+    for (i = 0; i < len; i++)
     {
         switch (s[i])
         {
@@ -264,15 +277,25 @@ Datum kmer_length(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(kmer_starts_with);
 Datum kmer_starts_with(PG_FUNCTION_ARGS)
 {
-    Kmer *k = PG_GETARG_KMER_P(0);
-    Kmer *j = PG_GETARG_KMER_P(1);
+   Kmer *k;
+    Kmer *j;
+    bool result;
+    uint8_t i;  
 
-    // If j is longer than k, k cannot start with j
+    k = PG_GETARG_KMER_P(0);
+    j = PG_GETARG_KMER_P(1);
+
+    /* If j is longer than k, k cannot start with j */
     if (j->length > k->length)
+    {
+        PG_FREE_IF_COPY(k, 0);
+        PG_FREE_IF_COPY(j, 1);
         PG_RETURN_BOOL(false);
+    }
 
-    bool result = true;
-    for (uint8_t i = 0; i < j->length; i++)
+    result = true;
+
+    for (i = 0; i < j->length; i++)
     {
         // Compare each base using bitwise AND
         // For strict kmer (A/C/G/T only), can just compare equality
@@ -335,6 +358,11 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 {
     FuncCallContext *funcctx;
     generate_kmers_fctx *fctx;
+    Dna *dna;       
+    int k;          
+    int call_cntr;  
+    Kmer *kmer;    
+    int i;          
 
     if (SRF_IS_FIRSTCALL())
     {
@@ -342,8 +370,8 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
         funcctx = SRF_FIRSTCALL_INIT();
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-        Dna *dna = PG_GETARG_DNA_P(0);
-        int k = PG_GETARG_INT32(1);
+        dna = PG_GETARG_DNA_P(0);
+        k = PG_GETARG_INT32(1);
 
         if (k <= 0 || k > dna->length)
             ereport(ERROR, (errmsg("Invalid k")));
@@ -364,15 +392,15 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
     funcctx = SRF_PERCALL_SETUP();
     fctx = funcctx->user_fctx;
 
-    int call_cntr = funcctx->call_cntr;
+    call_cntr = funcctx->call_cntr;
 
     if (call_cntr < fctx->num_kmers)
     {
         // Allouer et remplir un Kmer
-        Kmer *kmer = palloc0(sizeof(Kmer)+1);
+        kmer = palloc0(sizeof(Kmer)+1);
         kmer->length = fctx->k;
 
-        for (int i = 0; i < fctx->k; i++)
+        for (i = 0; i < fctx->k; i++)
         {
             char base = toupper(fctx->bases[call_cntr + i]);
             switch (base)
@@ -414,8 +442,14 @@ Datum qkmer_cast_to_text(PG_FUNCTION_ARGS)
 
 Qkmer * qkmer_parse(char **str)
 {
-    const char *s = *str;
-    int len = strlen(s);
+    const char *s;
+    int len;
+    Qkmer *k;  
+    int i;     
+    char c;    
+
+    s = *str;
+    len = strlen(s);
 
     if (len == 0 || len > 32)
         ereport(ERROR,
@@ -423,12 +457,12 @@ Qkmer * qkmer_parse(char **str)
                  errmsg("invalid input syntax for type qkmer: \"%s\"", s),
                  errdetail("qkmer must be 1–32 bases long")));
 
-    Qkmer *k = (Qkmer *) palloc0(sizeof(Qkmer));
+    k = (Qkmer *) palloc0(sizeof(Qkmer));
     k->length = len;
 
-    for (int i = 0; i < len; i++)
+    for (i = 0; i < len; i++)
     {
-        char c = toupper(s[i]);
+        c = toupper(s[i]);
         switch (c)
         {
             case 'A': k->code[i] = BASE_A; break;
@@ -496,4 +530,28 @@ Datum qkmer_length(PG_FUNCTION_ARGS)
     Qkmer *k = PG_GETARG_QKMER_P(0);
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_INT32(k->length);
+}
+
+
+/*
+ * kmer_hash - hash function for kmer type
+ * Required for hash-based operations like GROUP BY
+ */
+PG_FUNCTION_INFO_V1(kmer_hash);
+Datum kmer_hash(PG_FUNCTION_ARGS)
+{
+    Kmer *k = PG_GETARG_KMER_P(0);
+    uint32 hash = 0;
+    
+    // Hash combines length and all bases
+    hash = (uint32) k->length;
+    
+    for (int i = 0; i < k->length; i++)
+    {
+        // hash = hash * 33 + code[i] (djb2 algorithm variant)
+        hash = ((hash << 5) + hash) + (uint32) k->code[i];
+    }
+    
+    PG_FREE_IF_COPY(k, 0);
+    PG_RETURN_INT32(hash);
 }
