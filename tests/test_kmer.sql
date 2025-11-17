@@ -56,3 +56,23 @@ SELECT * FROM kmers WHERE seq = 'ACGT'::kmer;
 SELECT k.kmer
 FROM generate_kmers('ACGTACGT', 6) AS k(kmer);
 
+
+\echo '\n========================================='
+\echo '=== COUNTING_KMERS TESTS ================'
+\echo '========================================='
+-- Test 1: Simple GROUP BY
+SELECT k.kmer, count(*) 
+FROM generate_kmers('ACGTACGT'::dna, 3) AS k(kmer) 
+GROUP BY k.kmer;
+
+-- Test 2: Comptage avec statistiques
+WITH kmers AS (
+    SELECT k.kmer, count(*) 
+    FROM generate_kmers('ACGTACGTACGT'::dna, 4) AS k(kmer) 
+    GROUP BY k.kmer
+)
+SELECT 
+    sum(count) AS total_count,
+    count(*) AS distinct_count,
+    count(*) FILTER (WHERE count = 1) AS unique_count
+FROM kmers;
