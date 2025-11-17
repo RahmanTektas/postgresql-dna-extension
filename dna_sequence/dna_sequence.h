@@ -15,6 +15,7 @@
 #include "utils/fmgrprotos.h"
 #include "funcapi.h"  
 #include "utils/builtins.h"
+#include "access/hash.h"
 
 PG_MODULE_MAGIC;
 
@@ -59,7 +60,6 @@ typedef struct
 {
     int32 vl_len_;
     uint8_t length;
-    //uint8_t pad[3];  /* padding to keep bases[] 4-byte aligned */
     uint8_t bases[FLEXIBLE_ARRAY_MEMBER];
 } Dna;
 

@@ -537,21 +537,15 @@ Datum qkmer_length(PG_FUNCTION_ARGS)
  * kmer_hash - hash function for kmer type
  * Required for hash-based operations like GROUP BY
  */
+
 PG_FUNCTION_INFO_V1(kmer_hash);
-Datum kmer_hash(PG_FUNCTION_ARGS)
+Datum
+kmer_hash(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
-    uint32 hash = 0;
-    
-    // Hash combines length and all bases
-    hash = (uint32) k->length;
-    
-    for (int i = 0; i < k->length; i++)
-    {
-        // hash = hash * 33 + code[i] (djb2 algorithm variant)
-        hash = ((hash << 5) + hash) + (uint32) k->code[i];
-    }
-    
+
+    uint32 hash = hash_any((unsigned char *) k->code, k->length);
+
     PG_FREE_IF_COPY(k, 0);
-    PG_RETURN_INT32(hash);
+    PG_RETURN_UINT32(hash);
 }
