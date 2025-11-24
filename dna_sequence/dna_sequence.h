@@ -15,6 +15,10 @@
 #include "utils/fmgrprotos.h"
 #include "funcapi.h"  
 #include "utils/builtins.h"
+#include "access/spgist.h"
+#include "access/spgist_private.h" /* For SP-GiST utility macros */
+#include "catalog/pg_type.h"
+#include "utils/datum.h"
 
 PG_MODULE_MAGIC;
 

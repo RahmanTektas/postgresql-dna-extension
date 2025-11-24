@@ -1,9 +1,6 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION dna_sequence" to load this file. \quit
 
-/******************************************************************************
- * Input/Output
- ******************************************************************************/
 
 -------------- DNA --------------------------
 
@@ -178,3 +175,145 @@ CREATE OPERATOR CLASS kmer_hash_ops
     DEFAULT FOR TYPE kmer USING hash AS
     OPERATOR 1 = ,
     FUNCTION 1 hash(kmer);
+
+
+/******************************************************************************
+ * Comparison Support for ORDER BY (BTree)
+******************************************************************************/
+
+CREATE FUNCTION kmer_cmp(kmer, kmer)
+  RETURNS integer
+  AS 'MODULE_PATHNAME', 'kmer_cmp'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+-- Define comparison operators for btree
+CREATE FUNCTION kmer_lt(kmer, kmer)
+  RETURNS boolean
+  AS 'SELECT kmer_cmp($1, $2) < 0'
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION kmer_le(kmer, kmer)
+  RETURNS boolean
+  AS 'SELECT kmer_cmp($1, $2) <= 0'
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION kmer_gt(kmer, kmer)
+  RETURNS boolean
+  AS 'SELECT kmer_cmp($1, $2) > 0'
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION kmer_ge(kmer, kmer)
+  RETURNS boolean
+  AS 'SELECT kmer_cmp($1, $2) >= 0'
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+-- Create comparison operators
+CREATE OPERATOR < (
+  LEFTARG = kmer,
+  RIGHTARG = kmer,
+  PROCEDURE = kmer_lt,
+  COMMUTATOR = >,
+  NEGATOR = >=,
+  RESTRICT = scalarltsel,
+  JOIN = scalarltjoinsel
+);
+
+CREATE OPERATOR <= (
+  LEFTARG = kmer,
+  RIGHTARG = kmer,
+  PROCEDURE = kmer_le,
+  COMMUTATOR = >=,
+  NEGATOR = >,
+  RESTRICT = scalarlesel,
+  JOIN = scalarlejoinsel
+);
+
+CREATE OPERATOR > (
+  LEFTARG = kmer,
+  RIGHTARG = kmer,
+  PROCEDURE = kmer_gt,
+  COMMUTATOR = <,
+  NEGATOR = <=,
+  RESTRICT = scalargtsel,
+  JOIN = scalargtjoinsel
+);
+
+CREATE OPERATOR >= (
+  LEFTARG = kmer,
+  RIGHTARG = kmer,
+  PROCEDURE = kmer_ge,
+  COMMUTATOR = <=,
+  NEGATOR = <,
+  RESTRICT = scalargesel,
+  JOIN = scalargejoinsel
+);
+
+CREATE FUNCTION kmer_ne(kmer, kmer)
+  RETURNS boolean
+  AS 'SELECT NOT equals($1, $2)'
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR <> (
+  LEFTARG = kmer,
+  RIGHTARG = kmer,
+  PROCEDURE = kmer_ne,
+  COMMUTATOR = <>,
+  NEGATOR = =,
+  RESTRICT = neqsel,
+  JOIN = neqjoinsel
+);
+
+/******************************************************************************
+ * BTree Operator Class (Required for ORDER BY)
+******************************************************************************/
+
+CREATE OPERATOR CLASS kmer_btree_ops
+  DEFAULT FOR TYPE kmer USING btree AS
+    OPERATOR 1 <,
+    OPERATOR 2 <=,
+    OPERATOR 3 =,
+    OPERATOR 4 >=,
+    OPERATOR 5 >,
+    FUNCTION 1 kmer_cmp(kmer, kmer);
+
+
+/******************************************************************************
+ * SP-GiST Index Support
+******************************************************************************/
+-- Register SP-GiST Support Functions
+CREATE FUNCTION spg_kmer_config(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION spg_kmer_choose(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION spg_kmer_picksplit(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION spg_kmer_inner_consistent(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION spg_kmer_leaf_consistent(internal, internal)
+  RETURNS bool
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+
+-- Define SP-GiST Operator Class
+CREATE OPERATOR CLASS kmer_spgist_ops
+  FOR TYPE kmer USING spgist AS
+    OPERATOR 1  =  (kmer, kmer),
+    OPERATOR 2  ^@ (kmer, kmer),
+    OPERATOR 3  @> (qkmer, kmer),
+    FUNCTION 1  spg_kmer_config(internal, internal),
+    FUNCTION 2  spg_kmer_choose(internal, internal),
+    FUNCTION 3  spg_kmer_picksplit(internal, internal),
+    FUNCTION 4  spg_kmer_inner_consistent(internal, internal),
+    FUNCTION 5  spg_kmer_leaf_consistent(internal, internal);
