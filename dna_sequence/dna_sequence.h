@@ -23,13 +23,15 @@
 
 PG_MODULE_MAGIC;
 
-/* --- Pointer conversion macros (must come first) --- */
+/* --- Pointer conversion macros --- */
 #define KmerPGetDatum(x)   PointerGetDatum(x)
 #define DatumGetKmerP(x)   ((Kmer *) DatumGetPointer(x))
 
 /* --- Argument and return macros --- */
 #define PG_RETURN_KMER_P(x)  return KmerPGetDatum(x)
-#define PG_GETARG_KMER_P(n)  DatumGetKmerP(PG_GETARG_DATUM(n))
+#define PG_GETARG_KMER_P(n) \
+    ((Kmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
+
 
 
 /*  DNA  */
@@ -47,17 +49,18 @@ PG_MODULE_MAGIC;
 #define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
 
 /* --- Argument and return macros --- */
-#define PG_GETARG_DNA_P(n) ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
+#define PG_GETARG_DNA_P(n) \
+    ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
 #define PG_RETURN_DNA_P(x) PG_RETURN_POINTER(x)
 
 
-/* --- Pointer conversion macros (must come first) --- */
+/* --- Pointer conversion macros --- */
 #define QkmerPGetDatum(x)   PointerGetDatum(x)
 #define DatumGetQkmerP(x)   ((Qkmer *) DatumGetPointer(x))
 
-/* --- Argument and return macros --- */
 #define PG_RETURN_QKMER_P(x)  return QkmerPGetDatum(x)
-#define PG_GETARG_QKMER_P(n)  DatumGetQkmerP(PG_GETARG_DATUM(n))
+#define PG_GETARG_QKMER_P(n) \
+    ((Qkmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
 
 /* --- Dna structure --- */
 typedef struct
@@ -68,17 +71,19 @@ typedef struct
 } Dna;
 
 /* --- Kmer structure --- */
-typedef struct Kmer
+typedef struct
 {
-    uint8_t code[32];
-    uint8_t  length;    /* length of the kmer in bases */
+    int32       vl_len_;        /* varlena header */
+    uint8       length;         /* 1–255 (or uint16 if you want >255) */
+    uint8       code[FLEXIBLE_ARRAY_MEMBER];
 } Kmer;
 
 /* --- QKmer structure --- */
-typedef struct Qkmer
+typedef struct
 {
-    uint8_t code[32];
-    uint8_t  length;    /* length of the Qkmer in bases */
+    int32       vl_len_;        /* varlena header */
+    uint8       length;         /* 1–255 */
+    uint8       code[FLEXIBLE_ARRAY_MEMBER];
 } Qkmer;
 
 typedef struct {
@@ -95,5 +100,7 @@ Kmer   *kmer_parse(char **str);
 char   *kmer_to_str(const Kmer *k);
 Qkmer  *qkmer_parse(char **str);
 char   *qkmer_to_str(const Qkmer *k);
+
+
 
 #endif

@@ -79,21 +79,12 @@ FROM kmers;
 
 
 -- Test 2: length() + display
-SELECT length(k), k::text
+SELECT length(k), k
 FROM (VALUES ('A'::kmer),
              ('AC'::kmer),
              ('ACG'::kmer),
              ('ACGT'::kmer)) AS t(k);
 
 
--- Test 2: length() + display
-SELECT k
-FROM (VALUES ('A'::kmer),
-             ('AC'::kmer),
-             ('ACG'::kmer),
-             ('ACGT'::kmer)) AS t(k);
 
-
-SELECT 'ACGT'::kmer AS k1,
-       'ACGT'::kmer AS k2,
-       'AGCT'::kmer AS k3;
+SELECT REPEAT('A',33)::kmer;

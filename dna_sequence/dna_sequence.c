@@ -2,6 +2,18 @@
 
 //////////////////////////// DNA ////////////////////////////
 
+static Dna *
+dna_alloc(uint8 length)
+{
+    Size size = offsetof(Dna, bases) + length * sizeof(uint8);
+    Dna *dna = (Dna *) palloc0(size);
+
+    SET_VARSIZE(dna, size);
+    dna->length = length;
+
+    return dna;
+}
+
 
 /*
  * dna_parse - parse a dna from a string
@@ -11,20 +23,20 @@
  */
 
 
-Dna *dna_parse(const char *str)
+Dna *dna_parse(const char *str )
 {
     size_t len;
-    Size size;        
     Dna *dna;         
     size_t i;         
     
     
     len = strlen(str);
 
-    if (len > UINT8_MAX)
+    if (len == 0 || len > UINT8_MAX)
         ereport(ERROR,
-                (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-                 errmsg("DNA sequence too long (max %d bases)", UINT8_MAX)));
+                (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                 errmsg("invalid input syntax for type dna: \"%s\"", str),
+                 errdetail("dna must be 1-255 bases long")));
 
     for (i = 0; i < len; i++)
     {
@@ -41,12 +53,7 @@ Dna *dna_parse(const char *str)
         }
     }
 
-    size = offsetof(Dna, bases) + len * sizeof(uint8_t);
-
-    dna = (Dna *) palloc(size);
-    SET_VARSIZE(dna, size);
-
-    dna->length = (uint8_t) len;
+    dna = dna_alloc((uint8_t) len);
 
     for (i = 0; i < len; i++)
     {
@@ -108,6 +115,18 @@ Datum dna_length(PG_FUNCTION_ARGS)
 
 //////////////////////////// KMER ////////////////////////////
 
+static Kmer *
+kmer_alloc(uint8 length)
+{
+    Size size = offsetof(Kmer, code) + length * sizeof(uint8);
+    Kmer *k = (Kmer *) palloc0(size);
+
+    SET_VARSIZE(k, size);
+    k->length = length;
+
+    return k;
+}
+
 
 /*
  * kmer_parse - parse a kmer from a string
@@ -132,8 +151,7 @@ Kmer * kmer_parse(char **str)
                  errmsg("invalid input syntax for type kmer: \"%s\"", s),
                  errdetail("kmer must be 1–32 bases long")));
 
-    k = (Kmer *) palloc0(sizeof(Kmer));
-    k->length = len;
+    k = kmer_alloc((uint8) len);
 
     for (i = 0; i < len; i++)
     {
@@ -267,6 +285,20 @@ Datum kmer_starts_with(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(result);
 }
 
+//////////////////////////// QKMER ////////////////////////////
+
+static Qkmer *
+qkmer_alloc(uint8 length)
+{
+    Size size = offsetof(Qkmer, code) + length * sizeof(uint8);
+    Qkmer *k = (Qkmer *) palloc0(size);
+
+    SET_VARSIZE(k, size);
+    k->length = length;
+
+    return k;
+}
+
 
 PG_FUNCTION_INFO_V1(qkmer_contains);
 Datum qkmer_contains(PG_FUNCTION_ARGS)
@@ -335,9 +367,7 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 
     if (call_cntr < fctx->num_kmers)
     {
-        // Allouer et remplir un Kmer
-        kmer = palloc0(sizeof(Kmer)+1);
-        kmer->length = fctx->k;
+        kmer = kmer_alloc((uint8) fctx->k); // +1 ?
 
         for (i = 0; i < fctx->k; i++)
         {
@@ -378,8 +408,7 @@ Qkmer * qkmer_parse(char **str)
                  errmsg("invalid input syntax for type qkmer: \"%s\"", s),
                  errdetail("qkmer must be 1–32 bases long")));
 
-    k = (Qkmer *) palloc0(sizeof(Qkmer));
-    k->length = len;
+    k = qkmer_alloc((uint8_t) len);
 
     for (i = 0; i < len; i++)
     {
@@ -548,8 +577,7 @@ Datum spg_kmer_choose(PG_FUNCTION_ARGS)
         out->result.splitTuple.prefixHasPrefix = true;
         
         // Create new shorter prefix
-        newPrefix = (Kmer *) palloc0(sizeof(Kmer));
-        newPrefix->length = commonLen;
+        newPrefix = kmer_alloc((uint8_t) commonLen);
         memcpy(newPrefix->code, prefixKmer->code, commonLen);
         out->result.splitTuple.prefixPrefixDatum = PointerGetDatum(newPrefix);
         
@@ -560,8 +588,7 @@ Datum spg_kmer_choose(PG_FUNCTION_ARGS)
         
         // Create postfix
         out->result.splitTuple.postfixHasPrefix = true;
-        postfix = (Kmer *) palloc0(sizeof(Kmer));
-        postfix->length = prefixKmer->length - commonLen - 1;
+        postfix = kmer_alloc((uint8_t) prefixKmer->length - commonLen - 1);
         if (postfix->length > 0)
             memcpy(postfix->code, &prefixKmer->code[commonLen + 1], postfix->length);
         out->result.splitTuple.postfixPrefixDatum = PointerGetDatum(postfix);
@@ -628,8 +655,8 @@ Datum spg_kmer_picksplit(PG_FUNCTION_ARGS)
     }
 
     // 2. Allocate the new node prefix
-    prefixKmer = (Kmer *) palloc0(sizeof(Kmer));
-    prefixKmer->length = commonLen;
+    prefixKmer = kmer_alloc((uint8_t) commonLen);
+
     memcpy(prefixKmer->code, k0->code, commonLen);
     
     out->hasPrefix = true;

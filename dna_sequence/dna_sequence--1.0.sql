@@ -36,12 +36,12 @@ CREATE OR REPLACE FUNCTION kmer_out(kmer)
     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE TYPE kmer (
-    internallength = 33,          
-    input          = kmer_in,
-    output         = kmer_out,
-    alignment    = char
+    internallength = VARIABLE,  
+    input = kmer_in,
+    output = kmer_out,
+    storage = extended,            -- allows compression/TOAST
+    alignment = int4
 );
-
 
 -------------- Qkmer --------------------------
 
@@ -56,10 +56,11 @@ CREATE OR REPLACE FUNCTION qkmer_out(qkmer)
     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE TYPE qkmer (
-    internallength = 33, 
-    input = qkmer_in,
-    output = qkmer_out,
-    alignment = char  
+    internallength = VARIABLE,
+    input          = qkmer_in,
+    output         = qkmer_out,
+    storage        = extended,      -- allows compression/TOAST
+    alignment      = int4
 );
 
 

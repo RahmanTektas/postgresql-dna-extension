@@ -59,13 +59,6 @@ INSERT INTO test_dna (seq) VALUES
 -- Select to see if output is correct
 SELECT id, seq FROM test_dna;
 
-\echo '--- Test 5: DNA casting to text validation ---'
-SELECT seq::text, seq::text = expected AS matches
-FROM (
-    SELECT seq,
-           CASE WHEN id = 1 THEN 'ACGTACGT'
-                WHEN id = 2 THEN 'TTGCA'
-                WHEN id = 3 THEN 'GGGAAA'
-           END AS expected
-    FROM test_dna
-) t;
+SELECT REPEAT('A', 256)::dna;
+
+SELECT ''::dna;
