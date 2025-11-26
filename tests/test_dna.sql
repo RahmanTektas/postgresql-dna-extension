@@ -3,7 +3,12 @@ DROP EXTENSION IF EXISTS dna_sequence CASCADE;
 CREATE EXTENSION dna_sequence;
 
 
+\echo '========================================='
+\echo '=== DNA TESTS ==========================='
+\echo '========================================='
+
 -- Basic parsing and output tests
+\echo '--- Test 1: DNA parsing and output ---'
 SELECT 'ACGT'::dna AS dna1,
        'ACGN'::dna AS dna2,
        'RYYN'::dna AS dna3;
@@ -12,6 +17,7 @@ SELECT 'ACGT'::dna AS dna1,
 -- ======================================================
 -- Length tests
 -- ======================================================
+\echo '--- Test 2: DNA length function ---'
 SELECT length('A'::dna) AS length_1;
 SELECT length('ACGT'::dna) AS length_4;
 SELECT length('ACGTGGC'::dna) AS length_7;
@@ -26,6 +32,7 @@ SELECT length('ACGTGGC'::dna) AS length_7;
 -- ======================================================
 -- Table tests
 -- ======================================================
+\echo '--- Test 3: DNA in table ---'
 DROP TABLE IF EXISTS dna_sequences;
 CREATE TABLE dna_sequences (id serial, seq dna);
 
@@ -36,6 +43,7 @@ VALUES ('ACGT'::dna),
 
 SELECT * FROM dna_sequences;
 
+\echo '--- Test 4: DNA table with validation ---'
 DROP TABLE IF EXISTS test_dna;
 
 CREATE TABLE test_dna (
@@ -51,6 +59,7 @@ INSERT INTO test_dna (seq) VALUES
 -- Select to see if output is correct
 SELECT id, seq FROM test_dna;
 
+\echo '--- Test 5: DNA casting to text validation ---'
 SELECT seq::text, seq::text = expected AS matches
 FROM (
     SELECT seq,

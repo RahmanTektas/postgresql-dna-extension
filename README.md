@@ -1,6 +1,12 @@
 # postgresql-dna-extension
 PostgreSQL extension implementing custom DNA types (dna, kmer, qkmer) for efficient genomic sequence representation and manipulation.
 
+# TODO
+
+- Fix kmer type (delete hack with allignment = 33)
+- Make generate_kmer simpler (look documentation given in project instructions)
+- Index support
+
 # Build
 ## To do once
 - install container info-h417-course-image:latest
