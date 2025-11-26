@@ -1,4 +1,4 @@
--- Drop & recreate the extension to ensure a clean state
+-- -- Drop & recreate the extension to ensure a clean state
 DROP EXTENSION IF EXISTS dna_sequence CASCADE;
 CREATE EXTENSION dna_sequence;
 
@@ -20,3 +20,11 @@ SELECT length('ACGT'::qkmer) AS expected_length_of_qkmer_4;
 -- Test using qkmer in a table
 DROP TABLE IF EXISTS qkmers;
 CREATE TABLE qkmers (id serial, seq qkmer);
+
+
+-- Test 2: length() + display
+SELECT length(k), k::text
+FROM (VALUES ('A'::qkmer),
+             ('AC'::qkmer),
+             ('ACG'::qkmer),
+             ('ACGT'::qkmer)) AS t(k);

@@ -87,50 +87,6 @@ Datum dna_in(PG_FUNCTION_ARGS)
     PG_RETURN_DNA_P(dna);
 }
 
-PG_FUNCTION_INFO_V1(dna_cast_from_text);
-Datum dna_cast_from_text(PG_FUNCTION_ARGS)
-{
-    text *txt = PG_GETARG_TEXT_P(0);
-    char *str = text_to_cstring(txt);
-
-    Dna *dna = dna_parse(str);
-
-    pfree(str);
-    PG_FREE_IF_COPY(txt, 0);
-    PG_RETURN_DNA_P(dna);
-}
-
-PG_FUNCTION_INFO_V1(dna_cast_to_text);
-Datum
-dna_cast_to_text(PG_FUNCTION_ARGS)
-{
-    Dna *dna;
-    text *result;
-    char *str;
-    int i; 
-
-    dna = PG_GETARG_DNA_P(0);
-
-    if (dna == NULL || dna->length == 0)
-        PG_RETURN_TEXT_P(cstring_to_text(""));
-
-    /* Allocate buffer for string (length + 1 for null terminator) */
-    str = (char *) palloc(dna->length + 1);
-    
-    /* Copy bases to string */
-    for (i = 0; i < dna->length; i++)
-    {
-        str[i] = dna->bases[i];
-    }
-    str[dna->length] = '\0';
-    
-    result = cstring_to_text(str);
-    pfree(str);
-    
-    PG_RETURN_TEXT_P(result);
-}
-
-
 
 PG_FUNCTION_INFO_V1(dna_out);
 Datum dna_out(PG_FUNCTION_ARGS)
@@ -311,23 +267,6 @@ Datum kmer_starts_with(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(result);
 }
 
-PG_FUNCTION_INFO_V1(kmer_cast_from_text);
-Datum kmer_cast_from_text(PG_FUNCTION_ARGS)
-{
-    char *str = PG_GETARG_CSTRING(0);
-    Kmer *k = kmer_parse(&str);
-    PG_RETURN_KMER_P(k);
-}
-
-PG_FUNCTION_INFO_V1(kmer_cast_to_text);
-Datum kmer_cast_to_text(PG_FUNCTION_ARGS)
-{
-    Kmer *k = PG_GETARG_KMER_P(0);
-    char *str = kmer_to_str(k);
-    PG_FREE_IF_COPY(k, 0);
-    PG_RETURN_CSTRING(str);
-}
-
 
 PG_FUNCTION_INFO_V1(qkmer_contains);
 Datum qkmer_contains(PG_FUNCTION_ARGS)
@@ -421,24 +360,6 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 }
 
 //////////////////////////// QKMER ////////////////////////////
-
-
-PG_FUNCTION_INFO_V1(qkmer_cast_from_text);
-Datum qkmer_cast_from_text(PG_FUNCTION_ARGS)
-{
-    char *str = PG_GETARG_CSTRING(0);
-    Qkmer *qk = qkmer_parse(&str);
-    PG_RETURN_QKMER_P(qk);
-}
-
-PG_FUNCTION_INFO_V1(qkmer_cast_to_text);
-Datum qkmer_cast_to_text(PG_FUNCTION_ARGS)
-{
-    Qkmer *qk = PG_GETARG_QKMER_P(0);
-    char *str = qkmer_to_str(qk);
-    PG_FREE_IF_COPY(qk, 0);
-    PG_RETURN_CSTRING(str);
-}
 
 Qkmer * qkmer_parse(char **str)
 {

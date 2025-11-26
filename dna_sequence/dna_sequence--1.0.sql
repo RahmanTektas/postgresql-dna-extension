@@ -22,18 +22,6 @@ CREATE TYPE dna (
     storage = extended
 );
 
-CREATE OR REPLACE FUNCTION dna(text)
-  RETURNS dna
-  AS 'MODULE_PATHNAME', 'dna_cast_from_text'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION text(dna)
-  RETURNS text
-  AS 'MODULE_PATHNAME', 'dna_cast_to_text'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE CAST (text as dna) WITH FUNCTION dna(text) AS IMPLICIT;
-CREATE CAST (dna as text) WITH FUNCTION text(dna);
 
 -------------- Kmer --------------------------
 
@@ -50,21 +38,10 @@ CREATE OR REPLACE FUNCTION kmer_out(kmer)
 CREATE TYPE kmer (
     internallength = 33,          
     input          = kmer_in,
-    output         = kmer_out
+    output         = kmer_out,
+    alignment    = char
 );
 
-CREATE OR REPLACE FUNCTION kmer(text)
-  RETURNS kmer
-  AS 'MODULE_PATHNAME', 'kmer_cast_from_text'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION text(kmer)
-  RETURNS text
-  AS 'MODULE_PATHNAME', 'kmer_cast_to_text'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE CAST (text as kmer) WITH FUNCTION kmer(text) AS IMPLICIT;
-CREATE CAST (kmer as text) WITH FUNCTION text(kmer);
 
 -------------- Qkmer --------------------------
 
@@ -79,25 +56,12 @@ CREATE OR REPLACE FUNCTION qkmer_out(qkmer)
     LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE TYPE qkmer (
-    internallength = 8, 
+    internallength = 33, 
     input = qkmer_in,
     output = qkmer_out,
-    alignment = int4  
+    alignment = char  
 );
 
-CREATE OR REPLACE FUNCTION qkmer(text)
-  RETURNS qkmer
-  AS 'MODULE_PATHNAME', 'qkmer_cast_from_text'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION text(qkmer)
-  RETURNS text  
-  AS 'MODULE_PATHNAME', 'qkmer_cast_to_text'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-
-
-CREATE CAST (text as qkmer) WITH FUNCTION qkmer(text) AS IMPLICIT;
-CREATE CAST (qkmer as text) WITH FUNCTION text(qkmer);
 
 /******************************************************************************
  * Functions
