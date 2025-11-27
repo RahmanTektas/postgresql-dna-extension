@@ -19,6 +19,8 @@ SELECT 'ACGT'::kmer AS k1,
 SELECT equals('ACGT'::kmer, 'ACGT'::kmer) AS equality_expected_true;
 SELECT equals('ACGT'::kmer, 'AGCT'::kmer) AS equality_expected_false;
 
+
+
 \echo '\n--- Test 3: Kmer equality operator ---'
 SELECT 'ACGT'::kmer = 'ACGT'::kmer AS equality_operator_true;
 SELECT 'ACGT'::kmer = 'AGCT'::kmer AS equality_operator_false;
