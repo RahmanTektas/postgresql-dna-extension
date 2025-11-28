@@ -81,4 +81,34 @@ SELECT * FROM kmer_test WHERE 'TGCR'::qkmer @> val ;
 -- Should return nothing (if strict) or handle gracefully.
 ---------------------------------------------------------------------
 SELECT 'Test 5: Length Mismatch' as test_name;
-SELECT * FROM kmer_test WHERE 'AAA'::qkmer @> val;
+EXPLAIN ANALYZE SELECT * FROM kmer_test WHERE 'AAA'::qkmer @> val;
+
+
+
+SELECT * 
+FROM pg_class
+WHERE relname = 'idx_kmer_spgist';
+
+SELECT * 
+FROM spgist_page_items(get_raw_page('idx_kmer_spgist', 0));
+
+
+WITH pages AS (
+  SELECT
+    blkno,
+    (spgist_page_items(get_raw_page('idx_kmer_spgist', blkno))).*
+  FROM generate_series(0,
+        (SELECT relpages - 1
+         FROM pg_class
+         WHERE relname = 'idx_kmer_spgist')) AS blkno
+)
+SELECT
+  level,
+  blkno,
+  tupleoffset,
+  -- prefix is stored as the datum; cast it to kmer for readability
+  prefix::kmer AS node_prefix,
+  nodeLabel::smallint AS child_label
+FROM pages
+WHERE type = 'i'      -- inner tuples only
+ORDER BY level, blkno, tupleoffset;

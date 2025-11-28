@@ -28,3 +28,9 @@ FROM (VALUES ('A'::qkmer),
              ('AC'::qkmer),
              ('ACG'::qkmer),
              ('ACGT'::qkmer)) AS t(k);
+
+-- Test 3: contains 
+\echo '--- Test 3: Qkmer contains function ---'
+SELECT contains('RNGT'::qkmer, 'ACGT'::kmer) AS expected_true;
+
+SELECT contains('YCGT'::qkmer, 'ACGT'::kmer) AS expected_false;

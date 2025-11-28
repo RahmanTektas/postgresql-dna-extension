@@ -1,7 +1,7 @@
 #ifndef DNA_SEQUENCE_H
 #define DNA_SEQUENCE_H
 
-/* PostgreSQL headers MUST come first */
+/* PostgreSQL headers */
 #include "postgres.h"
 #include "fmgr.h"
 #include "utils/varlena.h"
@@ -9,8 +9,6 @@
 #include <math.h>
 #include <float.h>
 #include <stdlib.h>
-
-#include "fmgr.h"
 #include "libpq/pqformat.h"
 #include "utils/fmgrprotos.h"
 #include "funcapi.h"  
@@ -44,7 +42,7 @@ PG_MODULE_MAGIC;
 #define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T) // N = 0001 | 0010 | 0100 | 1000
 
 
-/* --- Pointer conversion macros (must come first) --- */
+/* --- Pointer conversion macros --- */
 #define DnaPGetDatum(x)   PointerGetDatum(x)
 #define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
 

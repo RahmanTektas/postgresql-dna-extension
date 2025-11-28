@@ -1,5 +1,21 @@
 #include "dna_sequence.h"
 
+static inline char
+base_to_char(uint8_t b)
+{
+    switch (b) {
+        case BASE_A: return 'A';
+        case BASE_C: return 'C';
+        case BASE_G: return 'G';
+        case BASE_T: return 'T';
+        case BASE_R: return 'R';  /* A or G */
+        case BASE_Y: return 'Y';  /* C or T */
+        case BASE_N: return 'N';  /* any base */
+        default:     return '?';  /* invalid / unexpected */
+    }
+}
+
+
 //////////////////////////// DNA ////////////////////////////
 
 static Dna *
@@ -101,7 +117,7 @@ Datum dna_out(PG_FUNCTION_ARGS)
     Dna *dna = PG_GETARG_DNA_P(0);
     char *str = dna_to_str(dna);
     PG_FREE_IF_COPY(dna, 0);
-    PG_RETURN_CSTRING(str);   /* output function retourne un cstring */
+    PG_RETURN_CSTRING(str);   /* output function */
 }
 
 PG_FUNCTION_INFO_V1(dna_length);
@@ -251,7 +267,7 @@ Datum kmer_length(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(kmer_starts_with);
 Datum kmer_starts_with(PG_FUNCTION_ARGS)
 {
-   Kmer *k;
+    Kmer *k;
     Kmer *j;
     bool result;
     uint8_t i;  
@@ -285,44 +301,7 @@ Datum kmer_starts_with(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(result);
 }
 
-//////////////////////////// QKMER ////////////////////////////
 
-static Qkmer *
-qkmer_alloc(uint8 length)
-{
-    Size size = offsetof(Qkmer, code) + length * sizeof(uint8);
-    Qkmer *k = (Qkmer *) palloc0(size);
-
-    SET_VARSIZE(k, size);
-    k->length = length;
-
-    return k;
-}
-
-
-PG_FUNCTION_INFO_V1(qkmer_contains);
-Datum qkmer_contains(PG_FUNCTION_ARGS)
-{
-    Qkmer *qk = PG_GETARG_QKMER_P(0);
-    Kmer *k = PG_GETARG_KMER_P(1);
-    bool result = true;
-
-    if (qk->length != k->length) return false;
-
-    for (size_t i = 0; i < k->length; i++){
-        if(k->code[i] == qk->code[i]) continue;
-
-        else if (qk->code[i] == BASE_R && (k->code[i] == BASE_A || k->code[i] == BASE_G)) continue;
-        else if (qk->code[i] == BASE_Y && (k->code[i] == BASE_C || k->code[i] == BASE_T)) continue;
-        else if (qk->code[i] == BASE_N) continue;                                    
-
-        result = false;
-        break;
-    }
-    PG_FREE_IF_COPY(qk, 0);
-    PG_FREE_IF_COPY(k, 1);
-    PG_RETURN_BOOL(result);
-}
 
 PG_FUNCTION_INFO_V1(generate_kmers);
 Datum generate_kmers(PG_FUNCTION_ARGS)
@@ -391,6 +370,45 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 
 //////////////////////////// QKMER ////////////////////////////
 
+static Qkmer *
+qkmer_alloc(uint8 length)
+{
+    Size size = offsetof(Qkmer, code) + length * sizeof(uint8);
+    Qkmer *k = (Qkmer *) palloc0(size);
+
+    SET_VARSIZE(k, size);
+    k->length = length;
+
+    return k;
+}
+
+
+PG_FUNCTION_INFO_V1(qkmer_contains);
+Datum qkmer_contains(PG_FUNCTION_ARGS)
+{
+    Qkmer *qk = PG_GETARG_QKMER_P(0);
+    Kmer *k = PG_GETARG_KMER_P(1);
+    bool result = true;
+
+    if (qk->length != k->length) {
+        PG_FREE_IF_COPY(qk, 0);
+        PG_FREE_IF_COPY(k, 1);
+        PG_RETURN_BOOL(false);
+    } else {
+        for (size_t i = 0; i < k->length; i++){
+            if(k->code[i] == qk->code[i]) continue;
+
+            else if (qk->code[i] == BASE_R && (k->code[i] == BASE_A || k->code[i] == BASE_G)) continue;
+            else if (qk->code[i] == BASE_Y && (k->code[i] == BASE_C || k->code[i] == BASE_T)) continue;
+            else if (qk->code[i] == BASE_N) continue;              
+            result = false;
+            break;
+        }
+    }
+    PG_FREE_IF_COPY(qk, 0);
+    PG_FREE_IF_COPY(k, 1);
+    PG_RETURN_BOOL(result);
+}
 Qkmer * qkmer_parse(char **str)
 {
     const char *s;
@@ -555,158 +573,170 @@ Datum spg_kmer_config(PG_FUNCTION_ARGS)
 
 // Fix 2: In spg_kmer_choose - Correct struct fields and C90 compliance
 PG_FUNCTION_INFO_V1(spg_kmer_choose);
-Datum spg_kmer_choose(PG_FUNCTION_ARGS)
+Datum
+spg_kmer_choose(PG_FUNCTION_ARGS)
 {
-    spgChooseIn *in = (spgChooseIn *) PG_GETARG_POINTER(0);
+    spgChooseIn  *in  = (spgChooseIn *) PG_GETARG_POINTER(0);
     spgChooseOut *out = (spgChooseOut *) PG_GETARG_POINTER(1);
-    Kmer *inKmer = DatumGetKmerP(in->datum);
+
+    Kmer *inKmer     = DatumGetKmerP(in->datum);
     Kmer *prefixKmer = DatumGetKmerP(in->prefixDatum);
-    int commonLen;
-    int i;
+    int   commonLen;
+    int   i;
     Kmer *newPrefix;
     Kmer *postfix;
-    Datum *label;
 
-    // Calculate common prefix length
+    /* 1. Longest common prefix between input and existing prefix */
     commonLen = get_common_prefix_len(inKmer, prefixKmer);
 
-    // Case: Need to split the tuple
+    /* ---- CASE 1: need to split existing prefix ---- */
     if (commonLen < prefixKmer->length)
     {
         out->resultType = spgSplitTuple;
+
+        /* New shorter prefix for the upper node */
         out->result.splitTuple.prefixHasPrefix = true;
-        
-        // Create new shorter prefix
-        newPrefix = kmer_alloc((uint8_t) commonLen);
-        memcpy(newPrefix->code, prefixKmer->code, commonLen);
+        newPrefix = kmer_alloc((uint8) commonLen);
+        if (commonLen > 0)
+            memcpy(newPrefix->code, prefixKmer->code, commonLen);
         out->result.splitTuple.prefixPrefixDatum = PointerGetDatum(newPrefix);
-        
-        // Create node label - use INT2 (smallint) to store the uint8
-        label = (Datum *) palloc(sizeof(Datum));
-        *label = Int16GetDatum((int16) prefixKmer->code[commonLen]);
-        out->result.splitTuple.childNodeN = 0;  // First child
-        
-        // Create postfix
+
+        /* Upper node: exactly one child (the old inner/leaf) */
+        out->result.splitTuple.prefixNNodes = 1;
+        out->result.splitTuple.prefixNodeLabels =
+            (Datum *) palloc(sizeof(Datum));
+
+        /* That child gets the first differing base as label */
+        out->result.splitTuple.prefixNodeLabels[0] =
+            Int16GetDatum((int16) prefixKmer->code[commonLen]);
+
+        /* The old node becomes child 0 */
+        out->result.splitTuple.childNodeN = 0;
+
+        /* Lower node (postfix) keeps the remainder of the old prefix */
         out->result.splitTuple.postfixHasPrefix = true;
-        postfix = kmer_alloc((uint8_t) prefixKmer->length - commonLen - 1);
+        postfix = kmer_alloc((uint8) (prefixKmer->length - commonLen - 1));
         if (postfix->length > 0)
-            memcpy(postfix->code, &prefixKmer->code[commonLen + 1], postfix->length);
+            memcpy(postfix->code,
+                   &prefixKmer->code[commonLen + 1],
+                   postfix->length);
         out->result.splitTuple.postfixPrefixDatum = PointerGetDatum(postfix);
 
         PG_RETURN_VOID();
     }
 
-    // Case: Prefix matches fully, pick a child
+    /* ---- CASE 2: prefix matches; choose or add a child node ---- */
     if (inKmer->length > commonLen)
     {
         uint8 nextChar = inKmer->code[commonLen];
         int16 nodeLabel;
 
-        // Look for matching child
+        /* Try to find an existing child with this label */
         for (i = 0; i < in->nNodes; i++)
         {
             nodeLabel = DatumGetInt16(in->nodeLabels[i]);
             if ((uint8) nodeLabel == nextChar)
             {
-                out->resultType = spgMatchNode;
-                out->result.matchNode.nodeN = i;
-                out->result.matchNode.levelAdd = 1;  // Use levelAdd, not level
+                out->resultType                = spgMatchNode;
+                out->result.matchNode.nodeN    = i;
+                out->result.matchNode.levelAdd = 1;
                 out->result.matchNode.restDatum = in->datum;
                 PG_RETURN_VOID();
             }
         }
 
-        // Child not found, add new node
+        /* No child → create a new one */
         out->resultType = spgAddNode;
         out->result.addNode.nodeLabel = Int16GetDatum((int16) nextChar);
-        out->result.addNode.nodeN = in->nNodes;  // Position for new node
+        out->result.addNode.nodeN     = in->nNodes;
         PG_RETURN_VOID();
     }
 
-    // Exact match - add as new node with terminator
+    /* ---- CASE 3: exact match of prefix; add terminator child ---- */
     out->resultType = spgAddNode;
-    out->result.addNode.nodeLabel = Int16GetDatum((int16) 0);
-    out->result.addNode.nodeN = in->nNodes;
-    
+    out->result.addNode.nodeLabel = Int16GetDatum((int16) 0);  /* terminator */
+    out->result.addNode.nodeN     = in->nNodes;
+
     PG_RETURN_VOID();
 }
+
+
 
 /*
  * SP-GiST 'picksplit' function.
  * Called when a leaf page is full. Creates a new inner tuple.
  */
 PG_FUNCTION_INFO_V1(spg_kmer_picksplit);
-Datum spg_kmer_picksplit(PG_FUNCTION_ARGS)
+Datum
+spg_kmer_picksplit(PG_FUNCTION_ARGS)
 {
-    spgPickSplitIn *in = (spgPickSplitIn *) PG_GETARG_POINTER(0);
+    spgPickSplitIn  *in  = (spgPickSplitIn *) PG_GETARG_POINTER(0);
     spgPickSplitOut *out = (spgPickSplitOut *) PG_GETARG_POINTER(1);
-    Kmer *k0 = DatumGetKmerP(in->datums[0]);
-    int commonLen = k0->length;
-    int i;
+
+    Kmer *k0       = DatumGetKmerP(in->datums[0]);
+    int   commonLen = k0->length;
+    int   i;
     Kmer *prefixKmer;
 
-    // 1. Find the longest common prefix among ALL datums in this leaf
+    /* 1. Find longest common prefix across all tuples */
     for (i = 1; i < in->nTuples; i++)
     {
-        Kmer *ki = DatumGetKmerP(in->datums[i]);
-        int tmpLen = get_common_prefix_len(k0, ki);
+        Kmer *ki   = DatumGetKmerP(in->datums[i]);
+        int   tmpLen = get_common_prefix_len(k0, ki);
+
         if (tmpLen < commonLen)
             commonLen = tmpLen;
     }
 
-    // 2. Allocate the new node prefix
-    prefixKmer = kmer_alloc((uint8_t) commonLen);
+    /* 2. Build prefix kmer for this inner node */
+    prefixKmer = kmer_alloc((uint8) commonLen);
+    if (commonLen > 0)
+        memcpy(prefixKmer->code, k0->code, commonLen);
 
-    memcpy(prefixKmer->code, k0->code, commonLen);
-    
-    out->hasPrefix = true;
+    out->hasPrefix   = true;
     out->prefixDatum = PointerGetDatum(prefixKmer);
-    
-    // 3. Allocate bucket arrays (we have max 4 bases + maybe terminator, but alloc safe amount)
-    // Since we map specific bytes to nodes, we don't know how many distinct next-bytes exist yet.
-    out->nNodes = 0;
-    out->nodeLabels = (Datum *) palloc(sizeof(Datum) * in->nTuples); 
-    out->mapTuplesToNodes = (int *) palloc(sizeof(int) * in->nTuples);
-    out->leafTupleDatums = (Datum *) palloc(sizeof(Datum) * in->nTuples);
 
-    // 4. Sort tuples into buckets based on the character *after* the prefix
+    /* 3. Prepare arrays (worst case: one node per tuple) */
+    out->nNodes           = 0;
+    out->nodeLabels       = (Datum *) palloc(sizeof(Datum) * in->nTuples);
+    out->mapTuplesToNodes = (int *) palloc(sizeof(int) * in->nTuples);
+    out->leafTupleDatums  = (Datum *) palloc(sizeof(Datum) * in->nTuples);
+
+    /* 4. Bucket tuples according to the "next" char after prefix */
     for (i = 0; i < in->nTuples; i++)
     {
-        Kmer *ki = DatumGetKmerP(in->datums[i]);
+        Kmer *ki      = DatumGetKmerP(in->datums[i]);
         uint8 nextChar = (commonLen < ki->length) ? ki->code[commonLen] : 0;
-        int nodeIdx = -1;
-        int j;
+        int   nodeIdx  = -1;
+        int   j;
 
-        // Check if a node for this char already exists
+        /* See if we already created a node for this label */
         for (j = 0; j < out->nNodes; j++)
         {
-            uint8 *lbl = (uint8 *) DatumGetPointer(out->nodeLabels[j]);
-            if (*lbl == nextChar)
+            int16 lbl = DatumGetInt16(out->nodeLabels[j]);
+            if ((uint8) lbl == nextChar)
             {
                 nodeIdx = j;
                 break;
             }
         }
 
-        // Create new node label if not found
+        /* Create a new node label if needed */
         if (nodeIdx < 0)
         {
-            uint8 *lbl = (uint8 *) palloc(1);
-            *lbl = nextChar;
-            out->nodeLabels[out->nNodes] = PointerGetDatum(lbl);
+            out->nodeLabels[out->nNodes] = Int16GetDatum((int16) nextChar);
             nodeIdx = out->nNodes;
             out->nNodes++;
         }
 
         out->mapTuplesToNodes[i] = nodeIdx;
-        out->leafTupleDatums[i] = in->datums[i];
+        out->leafTupleDatums[i]  = in->datums[i];
     }
 
     PG_RETURN_VOID();
 }
 
 
-// Fix 3: In spg_kmer_inner_consistent - Fix C90 compliance
 PG_FUNCTION_INFO_V1(spg_kmer_inner_consistent);
 Datum spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
 {
@@ -795,6 +825,7 @@ Datum spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
                         match = false;
                         break;
                     }
+                    
                     
                     // Bitwise check: does qkmer base contain prefix base?
                     if (!(qk->code[pos] & prefixKmer->code[p])) {

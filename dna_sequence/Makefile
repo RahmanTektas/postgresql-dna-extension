@@ -55,6 +55,10 @@ test-kmer:
 test-qkmer:
 	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_qkmer.sql
 
+.PHONY: test-spgist
+test-spgist:
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_spgist.sql
+
 # Command to connect to psql
 .PHONY: psql
 psql:
