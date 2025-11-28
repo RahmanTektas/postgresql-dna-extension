@@ -23,6 +23,6 @@ info-h417-course-image:latest
 
 ## To run the extension
 
-- ```docker start -ai container_name```
+- ```docker start container_name```
 - ```docker exec -it container_name service postgresql start```
 - ```make run```

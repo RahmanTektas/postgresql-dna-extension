@@ -85,30 +85,27 @@ EXPLAIN ANALYZE SELECT * FROM kmer_test WHERE 'AAA'::qkmer @> val;
 
 
 
-SELECT * 
-FROM pg_class
-WHERE relname = 'idx_kmer_spgist';
-
-SELECT * 
-FROM spgist_page_items(get_raw_page('idx_kmer_spgist', 0));
-
-
-WITH pages AS (
-  SELECT
-    blkno,
-    (spgist_page_items(get_raw_page('idx_kmer_spgist', blkno))).*
-  FROM generate_series(0,
-        (SELECT relpages - 1
-         FROM pg_class
-         WHERE relname = 'idx_kmer_spgist')) AS blkno
+WITH RECURSIVE trie AS (
+    SELECT ''::text AS prefix, 0 AS depth
+    UNION ALL
+    SELECT prefix || ch, depth + 1
+    FROM trie
+    CROSS JOIN (VALUES ('A'), ('C'), ('G'), ('T')) AS b(ch)
+    WHERE EXISTS (
+        SELECT 1
+        FROM kmer_test
+        WHERE val::text LIKE (prefix || ch || '%')
+    )
 )
 SELECT
-  level,
-  blkno,
-  tupleoffset,
-  -- prefix is stored as the datum; cast it to kmer for readability
-  prefix::kmer AS node_prefix,
-  nodeLabel::smallint AS child_label
-FROM pages
-WHERE type = 'i'      -- inner tuples only
-ORDER BY level, blkno, tupleoffset;
+    CASE WHEN prefix = '' THEN 'ROOT'
+         ELSE repeat('  ', depth) || prefix
+    END AS tree
+FROM trie
+ORDER BY (prefix = '') DESC,  -- put ROOT first
+         prefix;              -- then lexicographic pre-order
+
+
+
+
+SELECT * FROM kmer_test;
