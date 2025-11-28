@@ -1,21 +1,5 @@
 #include "dna_sequence.h"
 
-static inline char
-base_to_char(uint8_t b)
-{
-    switch (b) {
-        case BASE_A: return 'A';
-        case BASE_C: return 'C';
-        case BASE_G: return 'G';
-        case BASE_T: return 'T';
-        case BASE_R: return 'R';  /* A or G */
-        case BASE_Y: return 'Y';  /* C or T */
-        case BASE_N: return 'N';  /* any base */
-        default:     return '?';  /* invalid / unexpected */
-    }
-}
-
-
 //////////////////////////// DNA ////////////////////////////
 
 static Dna *
