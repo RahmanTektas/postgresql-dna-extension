@@ -22,15 +22,23 @@
 PG_MODULE_MAGIC;
 
 /* --- Pointer conversion macros --- */
+#define DnaPGetDatum(x)   PointerGetDatum(x)
+#define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
 #define KmerPGetDatum(x)   PointerGetDatum(x)
 #define DatumGetKmerP(x)   ((Kmer *) DatumGetPointer(x))
+#define QkmerPGetDatum(x)   PointerGetDatum(x)
+#define DatumGetQkmerP(x)   ((Qkmer *) DatumGetPointer(x))
 
 /* --- Argument and return macros --- */
-#define PG_RETURN_KMER_P(x)  return KmerPGetDatum(x)
+#define PG_GETARG_DNA_P(n) \
+    ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
+#define PG_RETURN_DNA_P(x) PG_RETURN_POINTER(x)
 #define PG_GETARG_KMER_P(n) \
     ((Kmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
-
-
+#define PG_RETURN_KMER_P(x)  return KmerPGetDatum(x)
+#define PG_GETARG_QKMER_P(n) \
+    ((Qkmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
+#define PG_RETURN_QKMER_P(x)  return QkmerPGetDatum(x)
 
 /*  DNA  */
 #define BASE_A 0x01 // A = 0001
@@ -40,25 +48,6 @@ PG_MODULE_MAGIC;
 #define BASE_R (BASE_A | BASE_G) // R = 0001 | 0100
 #define BASE_Y (BASE_C | BASE_T) // Y = 0010 | 1000
 #define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T) // N = 0001 | 0010 | 0100 | 1000
-
-
-/* --- Pointer conversion macros --- */
-#define DnaPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
-
-/* --- Argument and return macros --- */
-#define PG_GETARG_DNA_P(n) \
-    ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
-#define PG_RETURN_DNA_P(x) PG_RETURN_POINTER(x)
-
-
-/* --- Pointer conversion macros --- */
-#define QkmerPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetQkmerP(x)   ((Qkmer *) DatumGetPointer(x))
-
-#define PG_RETURN_QKMER_P(x)  return QkmerPGetDatum(x)
-#define PG_GETARG_QKMER_P(n) \
-    ((Qkmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
 
 /* --- Dna structure --- */
 typedef struct
@@ -72,7 +61,7 @@ typedef struct
 typedef struct
 {
     int32       vl_len_;        /* varlena header */
-    uint8       length;         /* 1–255 (or uint16 if you want >255) */
+    uint8       length;         /* 1–255 */
     uint8       code[FLEXIBLE_ARRAY_MEMBER];
 } Kmer;
 
@@ -98,7 +87,5 @@ Kmer   *kmer_parse(char **str);
 char   *kmer_to_str(const Kmer *k);
 Qkmer  *qkmer_parse(char **str);
 char   *qkmer_to_str(const Qkmer *k);
-
-
 
 #endif
