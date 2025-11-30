@@ -2,6 +2,8 @@
 #include <stdint.h>
 
 
+PG_MODULE_MAGIC;
+
 static uint8_t
 char_to_mask(char c, bool strict)
 {
