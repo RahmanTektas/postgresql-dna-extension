@@ -73,16 +73,16 @@ typedef struct
 typedef struct
 {
     int32       vl_len_;        /* varlena header */
-    uint8       length;         /* 1–255 */
-    uint8       code[FLEXIBLE_ARRAY_MEMBER];
+    uint8_t       length;         /* 1–255 */
+    uint8_t       code[FLEXIBLE_ARRAY_MEMBER];
 } Kmer;
 
 /* --- QKmer structure --- */
 typedef struct
 {
     int32       vl_len_;        /* varlena header */
-    uint8       length;         /* 1–255 */
-    uint8       code[FLEXIBLE_ARRAY_MEMBER];
+    uint8_t       length;         /* 1–255 */
+    uint8_t       code[FLEXIBLE_ARRAY_MEMBER];
 } Qkmer;
 
 typedef struct {

@@ -1,11 +1,8 @@
 #include "dna_sequence.h"
+#include <stdint.h>
 
 
-/*
- * Helper: Convert Char to Bitmask
- * strict: if true, only allows A, C, G, T.
- */
-static uint8
+static uint8_t
 char_to_mask(char c, bool strict)
 {
     switch (toupper((unsigned char)c))
@@ -37,7 +34,7 @@ char_to_mask(char c, bool strict)
  * Helper: Convert Bitmask to Char
  */
 static char
-mask_to_char(uint8 mask)
+mask_to_char(uint8_t mask)
 {
     switch (mask)
     {
@@ -66,9 +63,9 @@ mask_to_char(uint8 mask)
 //////////////////////////// DNA ////////////////////////////
 
 static Dna *
-dna_alloc(uint8 length)
+dna_alloc(uint8_t length)
 {
-    Size size = offsetof(Dna, bases) + length * sizeof(uint8);
+    Size size = offsetof(Dna, bases) + length * sizeof(uint8_t);
     Dna *dna = (Dna *) palloc0(size);
 
     SET_VARSIZE(dna, size);
@@ -92,7 +89,7 @@ Dna *dna_parse(const char *str)
     // Validation loop
     for (i = 0; i < len; i++)
     {
-        uint8 mask = char_to_mask(str[i], true); // true = strict (ACGT only)
+        uint8_t mask = char_to_mask(str[i], true); // true = strict (ACGT only)
         if (mask == UNKNOWN_SYMBOL)
         {
              ereport(ERROR,
@@ -118,7 +115,7 @@ char * dna_to_str(const Dna *dna)
 
     for (size_t i = 0; i < dna->length; i++)
     {
-        uint8 mask = char_to_mask((char)dna->bases[i], true);
+        uint8_t mask = char_to_mask((char)dna->bases[i], true);
         if (mask != UNKNOWN_SYMBOL)
         {
              result[i] = (char)dna->bases[i]; // It's already stored as char in Dna struct
@@ -166,9 +163,9 @@ Datum dna_length(PG_FUNCTION_ARGS)
 //////////////////////////// KMER ////////////////////////////
 
 static Kmer *
-kmer_alloc(uint8 length)
+kmer_alloc(uint8_t length)
 {
-    Size size = offsetof(Kmer, code) + length * sizeof(uint8);
+    Size size = offsetof(Kmer, code) + length * sizeof(uint8_t);
     Kmer *k = (Kmer *) palloc0(size);
 
     SET_VARSIZE(k, size);
@@ -193,11 +190,11 @@ Kmer * kmer_parse(char **str)
                  errmsg("invalid input syntax for type kmer: \"%s\"", s),
                  errdetail("kmer must be 1–32 bases long")));
 
-    kmer = kmer_alloc((uint8) len);
+    kmer = kmer_alloc((uint8_t) len);
 
     for (i = 0; i < len; i++)
     {
-        uint8 mask = char_to_mask(s[i], true); // Strict mode: A, C, G, T only
+        uint8_t mask = char_to_mask(s[i], true); // Strict mode: A, C, G, T only
         if (mask == UNKNOWN_SYMBOL)
         {
             ereport(ERROR,
@@ -363,12 +360,12 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 
     if (call_cntr < fctx->num_kmers)
     {
-        kmer = kmer_alloc((uint8) fctx->k);
+        kmer = kmer_alloc((uint8_t) fctx->k);
 
         for (i = 0; i < fctx->k; i++)
         {
             // Use helper
-            uint8 mask = char_to_mask((char)fctx->bases[call_cntr + i], true);
+            uint8_t mask = char_to_mask((char)fctx->bases[call_cntr + i], true);
             if (mask == UNKNOWN_SYMBOL) 
             {
                  // Should not happen for valid Dna type, but safety fallback
@@ -388,9 +385,9 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 //////////////////////////// QKMER ////////////////////////////
 
 static Qkmer *
-qkmer_alloc(uint8 length)
+qkmer_alloc(uint8_t length)
 {
-    Size size = offsetof(Qkmer, code) + length * sizeof(uint8);
+    Size size = offsetof(Qkmer, code) + length * sizeof(uint8_t);
     Qkmer *k = (Qkmer *) palloc0(size);
 
     SET_VARSIZE(k, size);
@@ -447,7 +444,7 @@ Qkmer * qkmer_parse(char **str)
     for (i = 0; i < len; i++)
     {
         // Use helper in non-strict mode (allows all IUPAC)
-        uint8 mask = char_to_mask(s[i], false);
+        uint8_t mask = char_to_mask(s[i], false);
         
         if (mask == UNKNOWN_SYMBOL)
         {
@@ -585,7 +582,7 @@ spg_kmer_choose(PG_FUNCTION_ARGS)
         out->resultType = spgSplitTuple;
 
         out->result.splitTuple.prefixHasPrefix = true;
-        newPrefix = kmer_alloc((uint8) commonLen);
+        newPrefix = kmer_alloc((uint8_t) commonLen);
         if (commonLen > 0)
             memcpy(newPrefix->code, prefixKmer->code, commonLen);
         out->result.splitTuple.prefixPrefixDatum = PointerGetDatum(newPrefix);
@@ -599,7 +596,7 @@ spg_kmer_choose(PG_FUNCTION_ARGS)
         out->result.splitTuple.childNodeN = 0;
 
         out->result.splitTuple.postfixHasPrefix = true;
-        postfix = kmer_alloc((uint8) (prefixKmer->length - commonLen - 1));
+        postfix = kmer_alloc((uint8_t) (prefixKmer->length - commonLen - 1));
         if (postfix->length > 0)
             memcpy(postfix->code,
                    &prefixKmer->code[commonLen + 1],
@@ -611,13 +608,13 @@ spg_kmer_choose(PG_FUNCTION_ARGS)
 
     if (inKmer->length > commonLen)
     {
-        uint8 nextChar = inKmer->code[commonLen];
+        uint8_t nextChar = inKmer->code[commonLen];
         int16 nodeLabel;
 
         for (i = 0; i < in->nNodes; i++)
         {
             nodeLabel = DatumGetInt16(in->nodeLabels[i]);
-            if ((uint8) nodeLabel == nextChar)
+            if ((uint8_t) nodeLabel == nextChar)
             {
                 out->resultType                = spgMatchNode;
                 out->result.matchNode.nodeN    = i;
@@ -662,7 +659,7 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
             commonLen = tmpLen;
     }
 
-    prefixKmer = kmer_alloc((uint8) commonLen);
+    prefixKmer = kmer_alloc((uint8_t) commonLen);
     if (commonLen > 0)
         memcpy(prefixKmer->code, k0->code, commonLen);
 
@@ -677,14 +674,14 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
     for (i = 0; i < in->nTuples; i++)
     {
         Kmer *ki      = DatumGetKmerP(in->datums[i]);
-        uint8 nextChar = (commonLen < ki->length) ? ki->code[commonLen] : 0;
+        uint8_t nextChar = (commonLen < ki->length) ? ki->code[commonLen] : 0;
         int   nodeIdx  = -1;
         int   j;
 
         for (j = 0; j < out->nNodes; j++)
         {
             int16 lbl = DatumGetInt16(out->nodeLabels[j]);
-            if ((uint8) lbl == nextChar)
+            if ((uint8_t) lbl == nextChar)
             {
                 nodeIdx = j;
                 break;
@@ -715,7 +712,7 @@ Datum spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
     int i, j, p;
     int node_prefix_len = prefixKmer->length;
     int16 nodeLabel;
-    uint8 label;
+    uint8_t label;
     bool match;
     int label_idx, label_pos, pos, total_len;
     StrategyNumber strategy;
@@ -728,7 +725,7 @@ Datum spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
     for (i = 0; i < in->nNodes; i++)
     {
         nodeLabel = DatumGetInt16(in->nodeLabels[i]);
-        label = (uint8) nodeLabel;
+        label = (uint8_t) nodeLabel;
         match = true;
 
         for (j = 0; j < in->nkeys; j++)
