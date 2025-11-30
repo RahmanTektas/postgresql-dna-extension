@@ -9,7 +9,7 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
 # Docker Configuration
-DOCKER_CONTAINER = info-h417-dna-extension
+DOCKER_CONTAINER = project_dna
 DOCKER_USER_ROOT = root
 DOCKER_USER_POSTGRES = postgres
 EXTENSION_DIR = /extension/dna_sequence

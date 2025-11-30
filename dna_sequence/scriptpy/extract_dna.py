@@ -1,14 +1,14 @@
 import sys
 
-def generate_kmers(seq, k):
+def generate_dna(seq, k):
+    # on garde la signature, mais on ignore k
     seq = seq.strip().upper()
-    for i in range(0, len(seq) - k + 1):
-        kmer = seq[i:i+k]
-        # on ignore les séquences avec N (base inconnue)
-        if "N" not in kmer:
-            yield kmer
+    # si tu veux ignorer les reads avec N, on garde ce comportement
+    if seq and "N" not in seq:
+        yield seq
 
-def fastq_to_kmers(fastq_path, k, max_reads=None):
+def fastq_to_dna(fastq_path, k, max_reads=None):
+    # k ne sert plus vraiment mais on le garde pour la compatibilité
     k = int(k)
     count_reads = 0
     with open(fastq_path, "r") as f:
@@ -26,16 +26,16 @@ def fastq_to_kmers(fastq_path, k, max_reads=None):
             if max_reads is not None and count_reads > max_reads:
                 break
 
-            for kmer in generate_kmers(seq, k):
-                # une ligne = un kmer
-                print(kmer)
+            # une ligne = un ADN (un read complet)
+            for dna in generate_dna(seq, k):
+                print(dna)
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python make_kmers.py <fastq> <k> [max_reads]", file=sys.stderr)
+        print("Usage: python extract_dna.py <fastq> <k> [max_reads]", file=sys.stderr)
         sys.exit(1)
 
     fastq = sys.argv[1]
     k = int(sys.argv[2])
     max_reads = int(sys.argv[3]) if len(sys.argv) >= 4 else None
-    fastq_to_kmers(fastq, k, max_reads)
+    fastq_to_dna(fastq, k, max_reads)

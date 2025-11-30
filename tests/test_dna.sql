@@ -122,7 +122,7 @@ CREATE TABLE test_dna(
 
 -- Note: Ensure the file exists at this path in your docker container/environment
 COPY test_dna(seq)
-FROM '/extension/dna_sequence/scriptpy/kmer_36.txt'
+FROM '/extension/dna_sequence/scriptpy/dna_36.txt'
 WITH (FORMAT text);
 
 

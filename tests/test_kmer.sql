@@ -123,3 +123,89 @@ SELECT val, count(*)
 FROM kmer_dataset 
 WHERE val = 'AAA'::kmer 
 GROUP BY val;
+
+
+-- ======================================================
+-- PART 3: DATASET GENERATED VIA generate_kmers() and dna file
+-- ======================================================
+
+
+\echo '\n--- Test 13: Loading DNA source file into test_dna ---'
+DROP TABLE IF EXISTS test_dna;
+
+CREATE TABLE test_dna(
+    id bigserial PRIMARY KEY,
+    seq dna
+);
+
+COPY test_dna(seq)
+FROM '/extension/dna_sequence/scriptpy/dna_36.txt'
+WITH (FORMAT text);
+
+
+\echo '\n--- Test 14: Creating empty k-mer dataset table ---'
+DROP TABLE IF EXISTS other_kmer_dataset;
+
+CREATE TABLE other_kmer_dataset(
+    id bigserial PRIMARY KEY,
+    seq kmer
+);
+
+
+\echo '\n--- Test 15: Generating and inserting 4-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 4) AS k(kmer);
+
+
+\echo '\n--- Test 16: Inspecting generated 4-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 4;
+
+
+\echo '\n--- Test 17: Generating and inserting 10-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 10) AS k(kmer);
+
+
+\echo '\n--- Test 18: Inspecting generated 10-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 10;
+
+
+\echo '\n--- Test 19: Generating and inserting 19-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 19) AS k(kmer);
+
+
+\echo '\n--- Test 20: Inspecting generated 19-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 19;
+
+
+\echo '\n--- Test 21: Generating and inserting 33-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 33) AS k(kmer);
+
+
+\echo '\n--- Test 22: Inspecting generated 33-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 33;
+
+
+\echo '\n--- Test 23: Counting all generated kmers grouped by length ---'
+SELECT length(seq) AS kmer_length, count(*)
+FROM other_kmer_dataset
+GROUP BY length(seq)
+ORDER BY kmer_length;
