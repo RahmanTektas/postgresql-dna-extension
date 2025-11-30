@@ -84,6 +84,11 @@ SELECT 'Test 5: Length Mismatch' as test_name;
 EXPLAIN ANALYZE SELECT * FROM kmer_test WHERE 'AAA'::qkmer @> val;
 
 
+DROP TABLE IF EXISTS kmer_test;
+CREATE TABLE kmer_test (val kmer);
+
+INSERT INTO kmer_test VALUES 
+    ('ACG'), ('ACGC'), ('ACGG'), ('ACGT'), ('ACT'), ('ATG');
 
 WITH RECURSIVE trie AS (
     SELECT ''::text AS prefix, 0 AS depth

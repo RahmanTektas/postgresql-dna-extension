@@ -47,7 +47,19 @@ PG_MODULE_MAGIC;
 #define BASE_T 0x08 // T = 1000
 #define BASE_R (BASE_A | BASE_G) // R = 0001 | 0100
 #define BASE_Y (BASE_C | BASE_T) // Y = 0010 | 1000
+#define BASE_M (BASE_A | BASE_C)
+#define BASE_R (BASE_A | BASE_G)
+#define BASE_W (BASE_A | BASE_T)
+#define BASE_S (BASE_C | BASE_G)
+#define BASE_Y (BASE_C | BASE_T)
+#define BASE_K (BASE_G | BASE_T)
+#define BASE_V (BASE_A | BASE_C | BASE_G)
+#define BASE_H (BASE_A | BASE_C | BASE_T)
+#define BASE_D (BASE_A | BASE_G | BASE_T)
+#define BASE_B (BASE_C | BASE_G | BASE_T)
+#define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T)
 #define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T) // N = 0001 | 0010 | 0100 | 1000
+#define UNKNOWN_SYMBOL '?'
 
 /* --- Dna structure --- */
 typedef struct
