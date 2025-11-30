@@ -7,13 +7,13 @@ char_to_mask(char c, bool strict)
 {
     switch (toupper((unsigned char)c))
     {
-        // Canonical
+        // Default
         case 'A': return BASE_A;
         case 'C': return BASE_C;
         case 'G': return BASE_G;
         case 'T': return BASE_T;
 
-        // Degenerate (only allowed if not strict)
+        // IUPAC
         case 'M': return strict ? UNKNOWN_SYMBOL : BASE_M;
         case 'R': return strict ? UNKNOWN_SYMBOL : BASE_R;
         case 'W': return strict ? UNKNOWN_SYMBOL : BASE_W;
@@ -26,18 +26,16 @@ char_to_mask(char c, bool strict)
         case 'B': return strict ? UNKNOWN_SYMBOL : BASE_B;
         case 'N': return strict ? UNKNOWN_SYMBOL : BASE_N;
 
-        default: return UNKNOWN_SYMBOL; // Error code
+        default: return UNKNOWN_SYMBOL;
     }
 }
 
-/*
- * Helper: Convert Bitmask to Char
- */
 static char
 mask_to_char(uint8_t mask)
 {
     switch (mask)
     {
+        // Default
         case BASE_A: return 'A';
         case BASE_C: return 'C';
         case BASE_G: return 'G';
@@ -67,10 +65,8 @@ dna_alloc(uint8_t length)
 {
     Size size = offsetof(Dna, bases) + length * sizeof(uint8_t);
     Dna *dna = (Dna *) palloc0(size);
-
     SET_VARSIZE(dna, size);
     dna->length = length;
-
     return dna;
 }
 
@@ -84,12 +80,12 @@ Dna *dna_parse(const char *str)
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
                  errmsg("invalid input syntax for type dna: \"%s\"", str),
-                 errdetail("dna must be 1-255 bases long")));
+                 errdetail("dna must be 1-255 bases long, current length : %li", len)));
 
     // Validation loop
     for (i = 0; i < len; i++)
     {
-        uint8_t mask = char_to_mask(str[i], true); // true = strict (ACGT only)
+        uint8_t mask = char_to_mask(str[i], true);
         if (mask == UNKNOWN_SYMBOL)
         {
              ereport(ERROR,
@@ -118,7 +114,7 @@ char * dna_to_str(const Dna *dna)
         uint8_t mask = char_to_mask((char)dna->bases[i], true);
         if (mask != UNKNOWN_SYMBOL)
         {
-             result[i] = (char)dna->bases[i]; // It's already stored as char in Dna struct
+             result[i] = (char)dna->bases[i];
         }
         else
         {
@@ -167,34 +163,29 @@ kmer_alloc(uint8_t length)
 {
     Size size = offsetof(Kmer, code) + length * sizeof(uint8_t);
     Kmer *k = (Kmer *) palloc0(size);
-
     SET_VARSIZE(k, size);
     k->length = length;
-
     return k;
 }
 
 Kmer * kmer_parse(char **str)
 {
-    const char *s;
-    int len;
+    const char *s = *str;
+    size_t len = strlen(s);
     Kmer *kmer;
-    int i;
-
-    s = *str;
-    len = strlen(s);
+    size_t i;
 
     if (len == 0 || len > 32)
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
                  errmsg("invalid input syntax for type kmer: \"%s\"", s),
-                 errdetail("kmer must be 1–32 bases long")));
+                 errdetail("kmer must be 1–32 bases long, current len: %li", len)));
 
     kmer = kmer_alloc((uint8_t) len);
 
     for (i = 0; i < len; i++)
     {
-        uint8_t mask = char_to_mask(s[i], true); // Strict mode: A, C, G, T only
+        uint8_t mask = char_to_mask(s[i], true);
         if (mask == UNKNOWN_SYMBOL)
         {
             ereport(ERROR,
@@ -389,10 +380,8 @@ qkmer_alloc(uint8_t length)
 {
     Size size = offsetof(Qkmer, code) + length * sizeof(uint8_t);
     Qkmer *k = (Qkmer *) palloc0(size);
-
     SET_VARSIZE(k, size);
     k->length = length;
-
     return k;
 }
 
@@ -425,19 +414,16 @@ Datum qkmer_contains(PG_FUNCTION_ARGS)
 
 Qkmer * qkmer_parse(char **str)
 {
-    const char *s;
-    int len;
+    const char *s = *str;
+    size_t len = strlen(s);
     Qkmer *k;
-    int i;
-
-    s = *str;
-    len = strlen(s);
+    size_t i;
 
     if (len == 0 || len > 32)
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
                  errmsg("invalid input syntax for type qkmer: \"%s\"", s),
-                 errdetail("qkmer must be 1–32 bases long")));
+                 errdetail("qkmer must be 1–32 bases long, current len: %li", len)));
 
     k = qkmer_alloc((uint8_t) len);
 
