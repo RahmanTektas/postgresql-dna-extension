@@ -53,7 +53,7 @@ SELECT 'NNNN'::qkmer @> 'ACGT'::kmer AS full_N_true,
 -- PART 2: DATASET TESTS (FILE BASED)
 -- ======================================================
 
-/
+
 \echo '\n--- Test 7: Loading Kmer targets from file ---'
 -- We create a table of standard Kmers to test our Qkmer queries against.
 DROP TABLE IF EXISTS kmer_targets_dataset;
