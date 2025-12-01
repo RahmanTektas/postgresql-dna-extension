@@ -14,8 +14,9 @@ char_to_mask(char c, bool strict)
         case 'C': return BASE_C;
         case 'G': return BASE_G;
         case 'T': return BASE_T;
-
+        
         // IUPAC
+        case 'U': return strict ? UNKNOWN_SYMBOL : BASE_U;
         case 'M': return strict ? UNKNOWN_SYMBOL : BASE_M;
         case 'R': return strict ? UNKNOWN_SYMBOL : BASE_R;
         case 'W': return strict ? UNKNOWN_SYMBOL : BASE_W;
@@ -44,6 +45,7 @@ mask_to_char(uint8_t mask)
         case BASE_T: return 'T';
         
         // IUPAC
+        case BASE_U: return 'U';
         case BASE_M: return 'M';
         case BASE_R: return 'R';
         case BASE_W: return 'W';

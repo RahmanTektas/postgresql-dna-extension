@@ -42,19 +42,18 @@
 #define BASE_C 0x02 // C = 0010
 #define BASE_G 0x04 // G = 0100
 #define BASE_T 0x08 // T = 1000
-#define BASE_R (BASE_A | BASE_G)
+
+#define BASE_U 0x016
 #define BASE_Y (BASE_C | BASE_T)
 #define BASE_M (BASE_A | BASE_C)
 #define BASE_R (BASE_A | BASE_G)
 #define BASE_W (BASE_A | BASE_T)
 #define BASE_S (BASE_C | BASE_G)
-#define BASE_Y (BASE_C | BASE_T)
 #define BASE_K (BASE_G | BASE_T)
 #define BASE_V (BASE_A | BASE_C | BASE_G)
 #define BASE_H (BASE_A | BASE_C | BASE_T)
 #define BASE_D (BASE_A | BASE_G | BASE_T)
 #define BASE_B (BASE_C | BASE_G | BASE_T)
-#define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T)
 #define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T)
 #define UNKNOWN_SYMBOL '?'
 
