@@ -139,7 +139,7 @@ CREATE TABLE test_dna(
 );
 
 COPY test_dna(seq)
-FROM '/extension/dna_sequence/scriptpy/dna_36.txt'
+FROM '/extension/scriptpy/dna_36.txt'
 WITH (FORMAT text);
 
 
@@ -162,7 +162,8 @@ FROM test_dna d,
 \echo '\n--- Test 16: Inspecting generated 4-mers ---'
 SELECT *
 FROM other_kmer_dataset
-WHERE length(seq) = 4;
+WHERE length(seq) = 4
+LIMIT 5;
 
 
 \echo '\n--- Test 17: Generating and inserting 10-mers ---'

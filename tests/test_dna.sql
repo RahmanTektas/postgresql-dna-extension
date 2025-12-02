@@ -122,7 +122,7 @@ CREATE TABLE test_dna(
 
 -- Note: Ensure the file exists at this path in your docker container/environment
 COPY test_dna(seq)
-FROM '/extension/dna_sequence/scriptpy/dna_36.txt'
+FROM '/extension/scriptpy/dna_36.txt'
 WITH (FORMAT text);
 
 
@@ -130,7 +130,7 @@ WITH (FORMAT text);
 SELECT seq
 FROM test_dna
 ORDER BY random()
-LIMIT 40;
+LIMIT 5;
 
 
 \echo '\n--- Test 11: Select length from random sample ---'
@@ -145,6 +145,6 @@ INSERT INTO dna_with_length (seq)
 SELECT seq
 FROM test_dna
 ORDER BY random()
-LIMIT 10;
+LIMIT 5;
 
 SELECT * FROM dna_with_length;

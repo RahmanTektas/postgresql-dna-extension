@@ -66,7 +66,7 @@ CREATE TABLE kmer_targets_dataset (
 -- Note: This assumes the file exists. 
 -- We load standard Kmers (targets) to filter them later with Qkmers.
 COPY kmer_targets_dataset(val)
-FROM '/extension/dna_sequence/scriptpy/qkmeroutput.txt'
+FROM '/extension/scriptpy/qkmeroutput.txt'
 WITH (FORMAT text);
 
 
