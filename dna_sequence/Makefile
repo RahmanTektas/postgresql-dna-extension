@@ -2,7 +2,8 @@
 
 EXTENSION = dna_sequence
 DATA = dna_sequence--1.0.sql
-MODULES = dna_sequence
+MODULE_big = dna_sequence
+OBJS = dna_sequence.o spgist.o
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)

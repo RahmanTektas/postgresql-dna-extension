@@ -2,21 +2,30 @@
 #define DNA_SEQUENCE_H
 
 #include "postgres.h"
-#include "fmgr.h"
+ 
+#include "access/spgist.h"
+#include "access/spgist_private.h"
+#include "catalog/pg_type.h"
+#include "utils/datum.h"
+#include "utils/pg_locale.h"
 #include "utils/varlena.h"
+#include "common/int.h"
+#include "mb/pg_wchar.h"
+#include "utils/fmgrprotos.h"
+#include "varatt.h"
+
+
+
+#include "fmgr.h"
 #include <stdint.h> 
 #include <math.h>
 #include <float.h>
 #include <stdlib.h>
 #include "libpq/pqformat.h"
-#include "utils/fmgrprotos.h"
 #include "funcapi.h"  
 #include "utils/builtins.h"
-#include "access/spgist.h"
-#include "access/spgist_private.h"
-#include "catalog/pg_type.h"
-#include "utils/datum.h"
 #include "access/hash.h"
+
 
 /* --- Pointer conversion macros --- */
 #define DnaPGetDatum(x)   PointerGetDatum(x)
@@ -87,6 +96,14 @@ typedef struct {
     int k;
     int num_kmers;
 } generate_kmers_fctx;
+
+/* Struct for sorting values in picksplit */
+typedef struct spgNodePtr
+{
+    Datum       d;
+    int         i;
+    int16       c;
+} spgNodePtr;
 
 /* Function declarations */
 Dna    *dna_parse(const char *str);
