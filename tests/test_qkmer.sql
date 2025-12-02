@@ -58,9 +58,9 @@ SELECT 'NNNN'::qkmer @> 'ACGT'::kmer AS full_N_true,
 \echo '\n--- Test 7: Loading qkmer targets from file ---'
 DROP TABLE IF EXISTS qkmer_targets_dataset;
 
-CREATE TABLE kmer_targets_dataset (
+CREATE TABLE qkmer_targets_dataset (
     id  bigserial PRIMARY KEY,
-    val kmer
+    val qkmer
 );
 
 -- Note: This assumes the file exists. 
@@ -72,25 +72,27 @@ WITH (FORMAT text);
 
 \echo '\n--- Test 8: Verify Dataset Loading ---'
 SELECT count(*) as total_rows_loaded 
-FROM kmer_targets_dataset;
+FROM qkmer_targets_dataset;
 
 
-\echo '\n--- Test 9: Recherche de qkmers incluant le motif "AAAN" (Wildcard) ---'
-SELECT val
+\echo '\n--- Test 9: Search for qkmers that include the pattern "AAAN" (Wildcard) ---'
+SELECT val AS qkmer_including_AAAN
 FROM qkmer_targets_dataset
 WHERE val @> 'AAAN'::kmer
-LIMIT 20;
+LIMIT 5;
 
-\echo '\n--- Test 10: Vérification de couverture du kmer "CGTA" ---'
-SELECT val 
-FROM qkmer_targets_dataset 
+
+\echo '\n--- Test 10: Check whether qkmers cover the kmer "CGTA" ---'
+SELECT val AS qkmer_covering_CGTA
+FROM qkmer_targets_dataset
 WHERE val @> 'CGTA'::kmer
-LIMIT 20;
+--WHERE contains(val,'CGTA'::kmer)
+LIMIT 5;
 
 
-\echo '\n--- Test 11: Vérification de couverture du kmer "TCGA" ---'
--- Query: Trouve les qkmers du dataset qui contiennent/couvrent la séquence exacte 'TCGA'
-SELECT val
+\echo '\n--- Test 11: Check whether qkmers cover the kmer "TCGA" ---'
+-- Query: Finds qkmers in the dataset that contain/cover the exact sequence 'TCGA'
+SELECT val AS qkmer_covering_TCGA
 FROM qkmer_targets_dataset
 WHERE val @> 'TCGA'::kmer
-LIMIT 20;
+LIMIT 5;

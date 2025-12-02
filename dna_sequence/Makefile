@@ -9,7 +9,7 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
 # Docker Configuration
-DOCKER_CONTAINER = project_dna
+DOCKER_CONTAINER = dna_container
 DOCKER_USER_ROOT = root
 DOCKER_USER_POSTGRES = postgres
 EXTENSION_DIR = /extension/dna_sequence
@@ -65,6 +65,11 @@ test-kmer:
 test-qkmer:
 	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_qkmer.sql
 
+# Command to test spgist only
+.PHONY: test-spgist
+test-spgist:
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_spgist.sql
+
 # Command to connect to psql
 .PHONY: psql
 psql:
@@ -84,6 +89,7 @@ help:
 	@echo "  make test-dna          - Run DNA tests only"
 	@echo "  make test-kmer         - Run KMER tests only"
 	@echo "  make test-qkmer        - Run QKMER tests only"
+	@echo "  make test-spgist       - Run spgist tests only"
 	@echo "  make psql              - Connect to PostgreSQL"
 	@echo "  make docker-clean      - Clean all compiled files"
 	@echo "  make help              - Display this help message"
