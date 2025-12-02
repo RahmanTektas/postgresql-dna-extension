@@ -176,8 +176,8 @@ FROM test_dna d,
 \echo '\n--- Test 18: Inspecting generated 10-mers ---'
 SELECT *
 FROM other_kmer_dataset
-WHERE length(seq) = 10;
-
+WHERE length(seq) = 10
+LIMIT 5;
 
 \echo '\n--- Test 19: Generating and inserting 19-mers ---'
 INSERT INTO other_kmer_dataset (seq)
@@ -189,8 +189,8 @@ FROM test_dna d,
 \echo '\n--- Test 20: Inspecting generated 19-mers ---'
 SELECT *
 FROM other_kmer_dataset
-WHERE length(seq) = 19;
-
+WHERE length(seq) = 19
+LIMIT 5;
 
 \echo '\n--- Test 21: Generating and inserting 33-mers ---'
 INSERT INTO other_kmer_dataset (seq)
@@ -202,11 +202,12 @@ FROM test_dna d,
 \echo '\n--- Test 22: Inspecting generated 33-mers ---'
 SELECT *
 FROM other_kmer_dataset
-WHERE length(seq) = 33;
-
+WHERE length(seq) = 33
+LIMIT 5;
 
 \echo '\n--- Test 23: Counting all generated kmers grouped by length ---'
 SELECT length(seq) AS kmer_length, count(*)
 FROM other_kmer_dataset
 GROUP BY length(seq)
-ORDER BY kmer_length;
+ORDER BY kmer_length
+LIMIT 5;

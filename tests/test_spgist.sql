@@ -103,45 +103,59 @@ SELECT * FROM kmer_test WHERE 'AAA'::qkmer @> val;
 -- PART 2: DATASET TESTS 
 -- ======================================================
 
-/**
-\echo '--- Test 9: Generating Deterministic Dataset for Indexing ---'
-DROP TABLE IF EXISTS spgist_dataset;
-CREATE TABLE spgist_dataset (
-    id serial PRIMARY KEY,
-    val kmer
+\echo '\n--- Test 12: Create large table for SP-GiST dataset tests ---'
+DROP TABLE IF EXISTS spg_kmer_dataset;
+CREATE TABLE spg_kmer_dataset(
+    id bigserial PRIMARY KEY,
+    seq kmer
 );
 
--- We use generate_kmers to populate the table deterministically.
--- This ensures the dataset is identical every time we run the test.
 
--- Batch 1: A repetitive pattern (generates ~16 kmers)
-INSERT INTO spgist_dataset (val)
-SELECT k.kmer 
-FROM generate_kmers('ACGTACGTACGTACGTACGT'::dna, 5) AS k(kmer);
-
--- Batch 2: A Poly-T region (generates ~16 kmers)
-INSERT INTO spgist_dataset (val)
-SELECT k.kmer 
-FROM generate_kmers('TTTTTTTTTTTTTTTTTTTT'::dna, 5) AS k(kmer);
-
--- Batch 3: Insert a specific "Needle" manually to search for
-INSERT INTO spgist_dataset (val) VALUES ('AAAAAAAAAA');
+\echo '\n--- Test 13: Generate kmers (k=5) from DNA file ---'
+INSERT INTO spg_kmer_dataset(seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 5) AS k(kmer);
 
 
-\echo '--- Test 10: Indexing the Dataset ---'
-CREATE INDEX idx_kmer_spgist_dataset
-ON spgist_dataset
-USING spgist (val);
-
-ANALYZE spgist_dataset;
+\echo '\n--- Test 14: Create SP-GiST index for dataset ---'
+DROP INDEX IF EXISTS spg_kmer_dataset_idx;
+CREATE INDEX spg_kmer_dataset_idx
+ON spg_kmer_dataset USING spgist (seq);
 
 
-\echo '--- Test 11: Performance Check on Dataset ---'
--- We search for the specific value inserted above ('AAAAAAAAAA').
--- The EXPLAIN should show "Index Scan using idx_kmer_spgist_dataset"
-EXPLAIN (COSTS OFF) 
-SELECT * FROM spgist_dataset WHERE val = 'AAAAAAAAAA';
+\echo '\n--- Test 15: Prefix query on dataset ---'
+EXPLAIN ANALYZE
+SELECT *
+FROM spg_kmer_dataset
+WHERE seq ^@ 'ACG'::kmer
+LIMIT 10;
 
-SELECT * FROM spgist_dataset WHERE val = 'AAAAAAAAAA';
 
-**/
+\echo '\n--- Test 16: Random equality lookup ---'
+EXPLAIN ANALYZE
+SELECT *
+FROM spg_kmer_dataset
+WHERE seq = (SELECT seq FROM spg_kmer_dataset ORDER BY random() LIMIT 1);
+
+
+\echo '\n--- Test 17: qkmer pattern search on dataset ---'
+EXPLAIN ANALYZE
+SELECT *
+FROM spg_kmer_dataset
+WHERE 'RYNNN'::qkmer @> seq
+LIMIT 10;
+
+
+\echo '\n--- Test 18: Count kmers grouped by length ---'
+SELECT length(seq) AS len, count(*)
+FROM spg_kmer_dataset
+GROUP BY length(seq)
+ORDER BY len;
+
+
+\echo '\n--- Test 19: Random sample of dataset ---'
+SELECT *
+FROM spg_kmer_dataset
+ORDER BY random()
+LIMIT 5;
