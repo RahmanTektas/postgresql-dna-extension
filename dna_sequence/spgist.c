@@ -161,8 +161,8 @@ spg_kmer_choose(PG_FUNCTION_ARGS)
     spgChooseIn *in = (spgChooseIn *) PG_GETARG_POINTER(0);
     spgChooseOut *out = (spgChooseOut *) PG_GETARG_POINTER(1);
     Kmer       *inKmer = DatumGetKmerP(in->datum);
-    uint8_t    *inData = inKmer->code;
-    int         inLen = inKmer->length;
+    uint8_t    *inData = KMER_DATA(inKmer);
+    int         inLen = KMER_LEN(inKmer);
     uint8_t    *prefixData = NULL;
     int         prefixLen = 0;
     int         commonLen = 0;
@@ -174,8 +174,8 @@ spg_kmer_choose(PG_FUNCTION_ARGS)
     {
         Kmer *prefixKmer = DatumGetKmerP(in->prefixDatum);
 
-        prefixData = prefixKmer->code;
-        prefixLen = prefixKmer->length;
+        prefixData = KMER_DATA(prefixKmer);
+        prefixLen = KMER_LEN(prefixKmer);
 
         /* * commonPrefix logic: compares byte arrays. 
          * Assumes commonPrefix(char*, char*, int, int) exists or you allow casting.
@@ -307,14 +307,14 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
                 commonLen;
     spgNodePtr *nodes;
 
-	commonLen = k0->length;
+	commonLen = KMER_LEN(k0);
     for (i = 1; i < in->nTuples && commonLen > 0; i++)
     {
         Kmer *ki   = DatumGetKmerP(in->datums[i]);
-        int       tmp = commonPrefix(k0->code,
-                                 ki->code,
-                                 k0->length,
-                                 ki->length);
+        int       tmp = commonPrefix(KMER_DATA(k0),
+                                 KMER_DATA(ki),
+                                 KMER_LEN(k0),
+                                 KMER_LEN(ki));
         if (tmp < commonLen)
             commonLen = tmp;
     }
@@ -333,7 +333,7 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
     else
     {
         out->hasPrefix = true;
-        out->prefixDatum = formKmerDatum(k0->code, commonLen);
+        out->prefixDatum = formKmerDatum(KMER_DATA(k0), commonLen);
     }
 
 
@@ -344,7 +344,7 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
     {
         Kmer       *ki = DatumGetKmerP(in->datums[i]);
  
-        if (commonLen < ki->length)
+        if (commonLen < KMER_LEN(ki))
             nodes[i].c = ki->code[commonLen];
         else
             nodes[i].c = -1;    /* use -1 if string is all common */
@@ -378,10 +378,10 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
             out->nNodes++;
         }
  
-        if (commonLen < ki->length)
+        if (commonLen < KMER_LEN(ki))
 			// if (ki->length - commonLen - 1 > 0)
-				leafD = formKmerDatum(ki->code + commonLen + 1,
-						  ki->length - commonLen - 1);
+				leafD = formKmerDatum(KMER_DATA(ki) + commonLen + 1,
+						  KMER_LEN(ki) - commonLen - 1);
 			// else
 			// 	leadD = formKmerDatum(NULL, 0)
         else
