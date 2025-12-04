@@ -70,7 +70,6 @@ dna_alloc(uint8_t length)
     Size size = offsetof(Dna, bases) + length * sizeof(uint8_t);
     Dna *dna = (Dna *) palloc0(size);
     SET_VARSIZE(dna, size);
-    dna->length = length;
     return dna;
 }
 
@@ -111,9 +110,9 @@ Dna *dna_parse(const char *str)
 
 char * dna_to_str(const Dna *dna)
 {
-    char *result = palloc(dna->length + 1);  // +1 for '\0'
+    char *result = palloc(dna->vl_len_ + 1);  // +1 for '\0'
 
-    for (size_t i = 0; i < dna->length; i++)
+    for (size_t i = 0; i < dna->vl_len_; i++)
     {
         uint8_t mask = char_to_mask((char)dna->bases[i], true);
         if (mask != UNKNOWN_SYMBOL)
@@ -129,7 +128,7 @@ char * dna_to_str(const Dna *dna)
         }
     }
 
-    result[dna->length] = '\0';
+    result[dna->vl_len_] = '\0';
     return result;
 }
 
@@ -155,7 +154,7 @@ PG_FUNCTION_INFO_V1(dna_length);
 Datum dna_length(PG_FUNCTION_ARGS)
 {
     Dna *dna = PG_GETARG_DNA_P(0);
-    int32 len = dna->length;
+    int32 len = VARSIZE_ANY_EXHDR(dna);
     PG_FREE_IF_COPY(dna, 0);
     PG_RETURN_INT32(len);
 }
@@ -333,15 +332,15 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
         dna = PG_GETARG_DNA_P(0);
         k = PG_GETARG_INT32(1);
 
-        if (k <= 0 || k > dna->length)
+        if (k <= 0 || k > dna->vl_len_)
             ereport(ERROR, (errmsg("Invalid k")));
 
         fctx = palloc(sizeof(generate_kmers_fctx));
-        fctx->dna_length = dna->length;
+        fctx->dna_length = dna->vl_len_;
         fctx->k = k;
-        fctx->num_kmers = dna->length - k + 1;
-        fctx->bases = palloc(dna->length);
-        memcpy(fctx->bases, dna->bases, dna->length);
+        fctx->num_kmers = dna->vl_len_ - k + 1;
+        fctx->bases = palloc(dna->vl_len_);
+        memcpy(fctx->bases, dna->bases, dna->vl_len_);
 
         funcctx->user_fctx = fctx;
         funcctx->max_calls = fctx->num_kmers;

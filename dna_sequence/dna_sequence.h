@@ -70,7 +70,6 @@
 typedef struct
 {
     int32 vl_len_;
-    uint8_t length;
     uint8_t bases[FLEXIBLE_ARRAY_MEMBER];
 } Dna;
 
