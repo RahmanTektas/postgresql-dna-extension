@@ -52,7 +52,7 @@
 #define BASE_G 0x04 // G = 0100
 #define BASE_T 0x08 // T = 1000
 
-#define BASE_U 0x016
+#define BASE_U 0x010
 #define BASE_Y (BASE_C | BASE_T)
 #define BASE_M (BASE_A | BASE_C)
 #define BASE_R (BASE_A | BASE_G)
@@ -85,7 +85,6 @@ typedef struct
 typedef struct
 {
     int32       vl_len_;        /* varlena header */
-    uint8_t       length;         /* 1–255 */
     uint8_t       code[FLEXIBLE_ARRAY_MEMBER];
 } Qkmer;
 

@@ -28,7 +28,7 @@ QKMER_DATA(Qkmer *q)
 static inline int
 QKMER_LEN(Qkmer *q)
 {
-    return q->length;
+    return VARSIZE_ANY_EXHDR(q);
 }
 
 static bool

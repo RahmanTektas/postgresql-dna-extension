@@ -384,7 +384,6 @@ qkmer_alloc(uint8_t length)
     Size size = offsetof(Qkmer, code) + length * sizeof(uint8_t);
     Qkmer *k = (Qkmer *) palloc0(size);
     SET_VARSIZE(k, size);
-    k->length = length;
     return k;
 }
 
@@ -423,15 +422,16 @@ Qkmer * qkmer_parse(char **str)
 
 char * qkmer_to_str(const Qkmer *k)
 {
-    char *result = palloc(k->length + 1);
+	int32 len = VARSIZE_ANY_EXHDR(k);
+	char *result = palloc(len + 1);
 
-    for (int i = 0; i < k->length; i++)
+    for (int i = 0; i < len; i++)
     {
         // Use helper
         result[i] = mask_to_char(k->code[i]);
     }
 
-    result[k->length] = '\0';
+    result[len] = '\0';
     return result;
 }
 
@@ -456,7 +456,7 @@ Datum qkmer_length(PG_FUNCTION_ARGS)
 {
     Qkmer *k = PG_GETARG_QKMER_P(0);
     PG_FREE_IF_COPY(k, 0);
-    PG_RETURN_INT32(k->length);
+    PG_RETURN_INT32(VARSIZE_ANY_EXHDR(k));
 }
 
 /*
