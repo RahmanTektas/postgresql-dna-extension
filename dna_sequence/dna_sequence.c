@@ -383,16 +383,16 @@ static Qkmer *
 qkmer_alloc(uint8_t length)
 {
     Size size = offsetof(Qkmer, code) + length * sizeof(uint8_t);
-    Qkmer *k = (Qkmer *) palloc0(size);
-    SET_VARSIZE(k, size);
-    return k;
+    Qkmer *qk = (Qkmer *) palloc0(size);
+    SET_VARSIZE(qk, size);
+    return qk;
 }
 
 Qkmer * qkmer_parse(char **str)
 {
     const char *s = *str;
     size_t len = strlen(s);
-    Qkmer *k;
+    Qkmer *qk;
     size_t i;
 
     if (len == 0 || len > 32)
@@ -401,7 +401,7 @@ Qkmer * qkmer_parse(char **str)
                  errmsg("invalid input syntax for type qkmer: \"%s\"", s),
                  errdetail("qkmer must be 1–32 bases long, current len: %li", len)));
 
-    k = qkmer_alloc((uint8_t) len);
+    qk = qkmer_alloc((uint8_t) len);
 
     for (i = 0; i < len; i++)
     {
@@ -415,21 +415,20 @@ Qkmer * qkmer_parse(char **str)
                      errmsg("invalid DNA base in qkmer: \"%c\"", s[i]),
                      errdetail("Allowed: A, C, G, T, R, Y, S, W, K, M, B, D, H, V, N.")));
         }
-        k->code[i] = mask;
+        qk->code[i] = mask;
     }
 
-    return k;
+    return qk;
 }
 
-char * qkmer_to_str(const Qkmer *k)
+char * qkmer_to_str(const Qkmer *qk)
 {
-	int32 len = VARSIZE_ANY_EXHDR(k);
+	int32 len = VARSIZE_ANY_EXHDR(qk);
 	char *result = palloc(len + 1);
 
     for (int i = 0; i < len; i++)
     {
-        // Use helper
-        result[i] = mask_to_char(k->code[i]);
+        result[i] = mask_to_char(qk->code[i]);
     }
 
     result[len] = '\0';
@@ -446,18 +445,18 @@ Datum qkmer_in(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(qkmer_out);
 Datum qkmer_out(PG_FUNCTION_ARGS)
 {
-    Qkmer *k = PG_GETARG_QKMER_P(0);
-    char *result = qkmer_to_str(k);
-    PG_FREE_IF_COPY(k, 0);
+    Qkmer *qk = PG_GETARG_QKMER_P(0);
+    char *result = qkmer_to_str(qk);
+    PG_FREE_IF_COPY(qk, 0);
     PG_RETURN_CSTRING(result);
 }
 
 PG_FUNCTION_INFO_V1(qkmer_length);
 Datum qkmer_length(PG_FUNCTION_ARGS)
 {
-    Qkmer *k = PG_GETARG_QKMER_P(0);
-    PG_FREE_IF_COPY(k, 0);
-    PG_RETURN_INT32(VARSIZE_ANY_EXHDR(k));
+    Qkmer *qk = PG_GETARG_QKMER_P(0);
+    PG_FREE_IF_COPY(qk, 0);
+    PG_RETURN_INT32(VARSIZE_ANY_EXHDR(qk));
 }
 
 /*
