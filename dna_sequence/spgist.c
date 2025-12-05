@@ -16,7 +16,7 @@ KMER_DATA(Kmer *k)
 static inline int
 KMER_LEN(Kmer *k)
 {
-    return k->length;
+    return VARSIZE_ANY_EXHDR(k);
 }
 
 static inline uint8_t *
@@ -99,11 +99,10 @@ static Datum
 formKmerDatum(const uint8_t *data, int datalen)
 {
     /* Calculate total size: header + length byte + data */
-    int32       totalSize = VARHDRSZ + sizeof(uint8_t) + datalen;
+    int32       totalSize = VARHDRSZ + datalen;
     Kmer       *res = (Kmer *) palloc0(totalSize);
 
     SET_VARSIZE(res, totalSize);
-    res->length = (uint8_t) datalen;
 
     if (datalen > 0 && data != NULL)
         memcpy(res->code, data, datalen);
@@ -421,9 +420,8 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
         maxReconstrLen += prefixSize;
     }
 
-    reconstrKmer = palloc(VARHDRSZ + sizeof(uint8_t) + maxReconstrLen);
-    SET_VARSIZE(reconstrKmer, VARHDRSZ + sizeof(uint8_t) + maxReconstrLen);
-    reconstrKmer->length = maxReconstrLen;
+    reconstrKmer = palloc(VARHDRSZ + maxReconstrLen);
+    SET_VARSIZE(reconstrKmer, VARHDRSZ + maxReconstrLen);
 
     if (in->level)
         memcpy(KMER_DATA(reconstrKmer),
@@ -528,8 +526,7 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
         {
             out->nodeNumbers[out->nNodes] = i;
             out->levelAdds[out->nNodes] = thisLen - in->level;
-            reconstrKmer->length = thisLen;
-            SET_VARSIZE(reconstrKmer, VARHDRSZ + sizeof(uint8_t) + thisLen);
+            SET_VARSIZE(reconstrKmer, VARHDRSZ + thisLen);
             out->reconstructedValues[out->nNodes] =
                 datumCopy(PointerGetDatum(reconstrKmer), false, -1);
             out->nNodes++;
@@ -573,10 +570,8 @@ spg_kmer_leaf_consistent(PG_FUNCTION_ARGS)
     }
     else
     {
-        Kmer       *fullKmer = palloc(VARHDRSZ + sizeof(uint8_t) + fullLen);
-
-        SET_VARSIZE(fullKmer, VARHDRSZ + sizeof(uint8_t) + fullLen);
-        fullKmer->length = fullLen;
+        Kmer       *fullKmer = palloc(VARHDRSZ + fullLen);
+        SET_VARSIZE(fullKmer, VARHDRSZ + fullLen);
         fullValue = KMER_DATA(fullKmer);
         if (level)
             memcpy(fullValue, KMER_DATA(reconstrValue), level);

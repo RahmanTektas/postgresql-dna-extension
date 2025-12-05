@@ -77,7 +77,6 @@ typedef struct
 typedef struct
 {
     int32       vl_len_;        /* varlena header */
-    uint8_t       length;         /* 1–255 */
     uint8_t       code[FLEXIBLE_ARRAY_MEMBER];
 } Kmer;
 

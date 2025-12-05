@@ -167,7 +167,6 @@ kmer_alloc(uint8_t length)
     Size size = offsetof(Kmer, code) + length * sizeof(uint8_t);
     Kmer *k = (Kmer *) palloc0(size);
     SET_VARSIZE(k, size);
-    k->length = length;
     return k;
 }
 
@@ -208,9 +207,10 @@ Kmer * kmer_parse(char **str)
 
 char * kmer_to_str(const Kmer *k)
 {
-    char *result = palloc(k->length + 1);
+	int len = VARSIZE_ANY_EXHDR(k);
+    char *result = palloc(len + 1);
 
-    for (int i = 0; i < k->length; i++)
+    for (int i = 0; i < len; i++)
     {
         char c = mask_to_char(k->code[i]);
         if (c == UNKNOWN_SYMBOL)
@@ -222,7 +222,7 @@ char * kmer_to_str(const Kmer *k)
         result[i] = c;
     }
 
-    result[k->length] = '\0';
+    result[len] = '\0';
     return result;
 }
 
@@ -247,15 +247,17 @@ Datum kmer_equals(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     Kmer *j = PG_GETARG_KMER_P(1);
+	int k_len = VARSIZE_ANY_EXHDR(k);
+	int j_len = VARSIZE_ANY_EXHDR(j);
 
-    if (k->length != j->length)
+    if (k_len != j_len)
     {
         PG_FREE_IF_COPY(k, 0);
         PG_FREE_IF_COPY(j, 1);
         PG_RETURN_BOOL(false);
     }
 
-    for (uint8_t i = 0; i < k->length; i++)
+    for (uint8_t i = 0; i < k_len; i++)
     {
         if (k->code[i] != j->code[i])
         {
@@ -275,21 +277,20 @@ Datum kmer_length(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     PG_FREE_IF_COPY(k, 0);
-    PG_RETURN_INT32(k->length);
+    PG_RETURN_INT32(VARSIZE_ANY_EXHDR(k));
 }
 
 PG_FUNCTION_INFO_V1(kmer_starts_with);
 Datum kmer_starts_with(PG_FUNCTION_ARGS)
 {
-    Kmer *k;
-    Kmer *j;
+    Kmer *k = PG_GETARG_KMER_P(0);
+    Kmer *j = PG_GETARG_KMER_P(1);
+	int k_len = VARSIZE_ANY_EXHDR(k);
+    int j_len = VARSIZE_ANY_EXHDR(j);
     bool result;
     uint8_t i;
-
-    k = PG_GETARG_KMER_P(0);
-    j = PG_GETARG_KMER_P(1);
-
-    if (j->length > k->length)
+	
+    if (j_len > k_len)
     {
         PG_FREE_IF_COPY(k, 0);
         PG_FREE_IF_COPY(j, 1);
@@ -298,7 +299,7 @@ Datum kmer_starts_with(PG_FUNCTION_ARGS)
 
     result = true;
 
-    for (i = 0; i < j->length; i++)
+    for (i = 0; i < j_len; i++)
     {
         if (k->code[i] != j->code[i])
         {
@@ -467,7 +468,7 @@ Datum
 kmer_hash(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
-    uint32 hash = hash_any((unsigned char *) k->code, k->length);
+    uint32 hash = hash_any((unsigned char *) k->code, VARSIZE_ANY_EXHDR(k));
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_UINT32(hash);
 }
@@ -477,14 +478,17 @@ Datum kmer_cmp(PG_FUNCTION_ARGS)
 {
     Kmer *a = PG_GETARG_KMER_P(0);
     Kmer *b = PG_GETARG_KMER_P(1);
+	int a_len = VARSIZE_ANY_EXHDR(a);
+    int b_len = VARSIZE_ANY_EXHDR(b);
+	
     int result = 0;
     
-    int minlen = (a->length < b->length) ? a->length : b->length;
+    int minlen = (a_len < b_len) ? a_len : b_len;
     result = memcmp(a->code, b->code, minlen);
     
     if (result == 0) {
-        if (a->length < b->length) result = -1;
-        else if (a->length > b->length) result = 1;
+        if (a_len < b_len) result = -1;
+        else if (a_len > b_len) result = 1;
     }
     
     PG_FREE_IF_COPY(a, 0);

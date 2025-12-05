@@ -111,6 +111,4 @@ ORDER BY (prefix = '') DESC,  -- put ROOT first
          prefix;              -- then lexicographic pre-order
 
 
-
-
 SELECT * FROM kmer_test;
