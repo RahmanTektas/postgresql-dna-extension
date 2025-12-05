@@ -1,90 +1,213 @@
--- psql -U postgres -d test_dna -f tests/test_kmer.sql to run the file
-
--- Drop & recreate the extension to ensure a clean state
+-- 1. CLEAN STATE (ONLY HERE)
 DROP EXTENSION IF EXISTS dna_sequence CASCADE;
 CREATE EXTENSION dna_sequence;
 
 \echo '========================================='
-\echo '=== KMER TESTS ==========================='
+\echo '===         TEST: KMER TYPE           ==='
 \echo '========================================='
 
--- Test parsing and output
+-- ======================================================
+-- PART 1: MANUAL UNIT TESTS
+-- ======================================================
+
+-- 1. Parsing & Output
 \echo '\n--- Test 1: Kmer parsing and output ---'
 SELECT 'ACGT'::kmer AS k1,
-       'ACGT'::kmer AS k2,
+       'aaaa'::kmer AS k2,
        'AGCT'::kmer AS k3;
 
--- Test equality function and operator
-\echo '\n--- Test 2: Kmer equality function ---'
-SELECT equals('ACGT'::kmer, 'ACGT'::kmer) AS equality_expected_true;
-SELECT equals('ACGT'::kmer, 'AGCT'::kmer) AS equality_expected_false;
+-- 2. Equality
+\echo '\n--- Test 2: Equality function and operator (=) ---'
+SELECT equals('ACGT'::kmer, 'ACGT'::kmer) AS equality_expected_true,
+       equals('ACGT'::kmer, 'AGCT'::kmer) AS equality_expected_false;
 
-\echo '\n--- Test 3: Kmer equality operator ---'
-SELECT 'ACGT'::kmer = 'ACGT'::kmer AS equality_operator_true;
-SELECT 'ACGT'::kmer = 'AGCT'::kmer AS equality_operator_false;
+SELECT 'ACGT'::kmer = 'ACGT'::kmer AS equality_operator_true,
+       'ACGT'::kmer = 'AGCT'::kmer AS equality_operator_false;
 
--- Test length function
-\echo '\n--- Test 4: Kmer length ---'
-SELECT length('ACGT'::kmer) AS expected_length_of_kmer_4;
+-- 3. Length
+\echo '\n--- Test 3: Length verification ---'
+SELECT length('ACGT'::kmer) AS expected_length_of_kmer_4,
+       length('A'::kmer)    AS expected_length_of_kmer_1;
 
--- Tests starts_with(kmer, kmer) function
-\echo '\n--- Test 5: Kmer starts_with function ---'
-SELECT starts_with('ACGT'::kmer, 'A'::kmer)      AS starts_with_expected_true;
-SELECT starts_with('ACGT'::kmer, 'ACGTA'::kmer)  AS starts_with_expected_false;
+-- 4. Starts With
+\echo '\n--- Test 4: Starts_with function and operator (^@) ---'
+SELECT starts_with('ACGT'::kmer, 'A'::kmer)     AS starts_with_expected_true,
+       starts_with('ACGT'::kmer, 'ACGTA'::kmer) AS starts_with_expected_false;
 
--- Same tests using operator syntax
-\echo '\n--- Test 6: Kmer starts_with operator ---'
-SELECT 'ACGT'::kmer ^@ 'A'::kmer      AS starts_with_op_test1_true;
-SELECT 'ACGT'::kmer ^@ 'CG'::kmer     AS starts_with_op_test2_false;
+SELECT 'ACGT'::kmer ^@ 'AC'::kmer AS starts_with_op_test1_true,
+       'ACGT'::kmer ^@ 'CG'::kmer AS starts_with_op_test2_false;
 
--- Test using kmer in a table
-\echo '\n--- Test 7: Kmer in table ---'
-DROP TABLE IF EXISTS kmers;
-CREATE TABLE kmers (id serial, seq kmer);
+-- 5. Table Operations (Manual)
+\echo '\n--- Test 5: Basic Table Operations ---'
+DROP TABLE IF EXISTS kmers_manual;
+CREATE TABLE kmers_manual (id serial, seq kmer);
 
-INSERT INTO kmers (seq)
+INSERT INTO kmers_manual (seq)
 VALUES ('ACGT'::kmer), ('AAAA'::kmer), ('AGCT'::kmer);
 
-SELECT * FROM kmers WHERE seq = 'ACGT'::kmer;
+SELECT * FROM kmers_manual WHERE seq = 'ACGT'::kmer;
 
-\echo '\n========================================='
-\echo '=== GENERATE_KMERS TESTS ================'
-\echo '========================================='
+-- 6. Generate Kmers Function
+\echo '\n--- Test 6: generate_kmers(k=3) functionality ---'
+-- Should produce: ACG, CGT, GTA, TAC, ACG, CGT
+SELECT k.kmer 
+FROM generate_kmers('ACGTACGT'::dna, 3) AS k(kmer);
 
--- Test 1: Basic k=3
-\echo '\n--- Test 8: generate_kmers basic (k=3) ---'
-SELECT k.kmer
-FROM generate_kmers('ACGTACGT', 6) AS k(kmer);
-
-
-\echo '\n========================================='
-\echo '=== COUNTING_KMERS TESTS ================'
-\echo '========================================='
--- Test 1: Simple GROUP BY
-SELECT k.kmer, count(*) 
-FROM generate_kmers('ACGTACGT'::dna, 3) AS k(kmer) 
-GROUP BY k.kmer;
-
--- Test 2: Comptage avec statistiques
-WITH kmers AS (
-    SELECT k.kmer, count(*) 
-    FROM generate_kmers('ACGTACGTACGT'::dna, 4) AS k(kmer) 
+-- 7. K-mer Counting (Critical for Project)
+\echo '\n--- Test 7: Grouping and Counting (GROUP BY) ---'
+WITH kmer_counts AS (
+    SELECT k.kmer, count(*) as cnt
+    FROM generate_kmers('ACGTACGTACGT'::dna, 4) AS k(kmer)
     GROUP BY k.kmer
 )
-SELECT 
-    sum(count) AS total_count,
-    count(*) AS distinct_count,
-    count(*) FILTER (WHERE count = 1) AS unique_count
-FROM kmers;
+SELECT * FROM kmer_counts ORDER BY cnt DESC;
 
 
--- Test 2: length() + display
-SELECT length(k), k
-FROM (VALUES ('A'::kmer),
-             ('AC'::kmer),
-             ('ACG'::kmer),
-             ('ACGT'::kmer)) AS t(k);
+-- ======================================================
+-- PART 2: DATASET GENERATED VIA generate_kmers()
+-- ======================================================
 
 
+DROP TABLE IF EXISTS kmer_dataset;
+CREATE TABLE kmer_dataset (
+    id serial PRIMARY KEY,
+    val kmer
+);
 
-SELECT REPEAT('A',33)::kmer;
+\echo '\n--- Test 8: Populating Dataset using generate_kmers() with k = 3 ---'
+-- 1. Insertion short k-mers (k=3)
+-- Source: 'AAAAAA' -> Generates 'AAA' 4 times (Ideal test for counting)
+INSERT INTO kmer_dataset (val)
+SELECT k.kmer 
+FROM generate_kmers('AAAAAA'::dna, 3) AS k(kmer);
+
+\echo '\n--- Test 9: Populating Dataset using generate_kmers() with k = 4 ---'
+-- 2. Insertion standard k-mers (k=4)
+-- Source: 'ACGTACGT' -> Generates ACGT, CGTA, GTAC, TACG, ACGT
+INSERT INTO kmer_dataset (val)
+SELECT k.kmer 
+FROM generate_kmers('ACGTACGT'::dna, 4) AS k(kmer);
+
+\echo '\n--- Test 10: Populating Dataset using generate_kmers() with k = 32 ---'
+-- 3. Insertion max length k-mer (k=32)
+-- Source: A 32-nucleotide sequence -> Generates exactly one 32-mer
+INSERT INTO kmer_dataset (val)
+SELECT k.kmer 
+FROM generate_kmers('ACGTACGTACGTACGTACGTACGTACGTACGT'::dna, 32) AS k(kmer);
+
+
+\echo '\n--- Test 11: Dataset Statistics ---'
+-- Expected results:
+-- 'AAAAAA' (k=3) -> 4 rows
+-- 'ACGTACGT' (k=4) -> 5 rows
+-- 'ACGT...'(32) (k=32) -> 1 row
+-- TOTAL = 10 rows
+SELECT count(*) as total_rows_should_be_10,
+       min(length(val)) as min_len_should_be_3,
+       max(length(val)) as max_len_should_be_32
+FROM kmer_dataset;
+
+
+\echo '\n--- Test 12: Filtering generated data ---'
+-- We look for anything starting with 'AAA'. 
+-- The 4 kmers generated by 'AAAAAA' are all 'AAA'.
+SELECT count(*) as count_starts_with_AAA_should_be_4
+FROM kmer_dataset 
+WHERE val ^@ 'AAA'::kmer;
+
+
+\echo '\n--- Test 13: Grouping generated duplicates ---'
+-- 'AAAAAA' with k=3 generated: AAA, AAA, AAA, AAA
+-- The GROUP BY must collapse them into one row with a count of 4
+SELECT val, count(*) 
+FROM kmer_dataset 
+WHERE val = 'AAA'::kmer 
+GROUP BY val;
+
+
+-- ======================================================
+-- PART 3: DATASET GENERATED VIA generate_kmers() and dna file
+-- ======================================================
+
+
+\echo '\n--- Test 13: Loading DNA source file into test_dna ---'
+DROP TABLE IF EXISTS test_dna;
+
+CREATE TABLE test_dna(
+    id bigserial PRIMARY KEY,
+    seq dna
+);
+
+COPY test_dna(seq)
+FROM '/extension/scriptpy/dna_36.txt'
+WITH (FORMAT text);
+
+
+\echo '\n--- Test 14: Creating empty k-mer dataset table ---'
+DROP TABLE IF EXISTS other_kmer_dataset;
+
+CREATE TABLE other_kmer_dataset(
+    id bigserial PRIMARY KEY,
+    seq kmer
+);
+
+
+\echo '\n--- Test 15: Generating and inserting 4-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 4) AS k(kmer);
+
+
+\echo '\n--- Test 16: Inspecting generated 4-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 4
+LIMIT 5;
+
+
+\echo '\n--- Test 17: Generating and inserting 10-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 10) AS k(kmer);
+
+
+\echo '\n--- Test 18: Inspecting generated 10-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 10
+LIMIT 5;
+
+\echo '\n--- Test 19: Generating and inserting 19-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 19) AS k(kmer);
+
+
+\echo '\n--- Test 20: Inspecting generated 19-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 19
+LIMIT 5;
+
+\echo '\n--- Test 21: Generating and inserting 33-mers ---'
+INSERT INTO other_kmer_dataset (seq)
+SELECT k.kmer
+FROM test_dna d,
+     generate_kmers(d.seq, 33) AS k(kmer);
+
+
+\echo '\n--- Test 22: Inspecting generated 33-mers ---'
+SELECT *
+FROM other_kmer_dataset
+WHERE length(seq) = 33
+LIMIT 5;
+
+\echo '\n--- Test 23: Counting all generated kmers grouped by length ---'
+SELECT length(seq) AS kmer_length, count(*)
+FROM other_kmer_dataset
+GROUP BY length(seq)
+ORDER BY kmer_length
+LIMIT 5;
