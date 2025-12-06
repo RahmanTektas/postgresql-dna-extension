@@ -404,7 +404,10 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
     int         i;
 
     /* Reconstruct the kmer at this level */
-	reconstructedValue = datum_to_kmer(in->reconstructedValue);
+	if (in->level == 0)
+		reconstructedValue = NULL;
+	else
+		reconstructedValue = datum_to_kmer(in->reconstructedValue);
 
     Assert(reconstructedValue == NULL ? in->level == 0 :
            KMER_LEN(reconstructedValue) == in->level);
