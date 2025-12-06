@@ -70,7 +70,7 @@
 typedef struct
 {
     int32 vl_len_;
-    uint8_t bases[FLEXIBLE_ARRAY_MEMBER];
+    uint8_t code[FLEXIBLE_ARRAY_MEMBER];
 } Dna;
 
 /* --- Kmer structure --- */
@@ -88,7 +88,7 @@ typedef struct
 } Qkmer;
 
 typedef struct {
-    uint8_t *bases;
+    uint8_t *code;
     int dna_length;
     int k;
     int num_kmers;

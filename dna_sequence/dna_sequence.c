@@ -72,7 +72,7 @@ mask_to_char(uint8_t mask)
 static Dna *
 dna_alloc(uint8_t length)
 {
-    Size size = offsetof(Dna, bases) + length * sizeof(uint8_t);
+    Size size = offsetof(Dna, code) + length * sizeof(uint8_t);
     Dna *dna = (Dna *) palloc0(size);
     SET_VARSIZE(dna, size);
     return dna;
@@ -331,10 +331,10 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
         fctx->dna_length = DNA_LEN(dna);
         fctx->k = k;
         fctx->num_kmers = fctx->dna_length - k + 1;
-        fctx->bases = (uint8_t*) palloc(fctx->dna_length);
+        fctx->code = (uint8_t*) palloc(fctx->dna_length);
         
         // Use VARDATA_ANY to safely copy data from the Dna struct
-        memcpy(fctx->bases, VARDATA_ANY(dna), fctx->dna_length);
+        memcpy(fctx->code, VARDATA_ANY(dna), fctx->dna_length);
 
         funcctx->user_fctx = fctx;
         funcctx->max_calls = fctx->num_kmers;
@@ -353,7 +353,7 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 
         for (i = 0; i < fctx->k; i++)
         {
-            uint8_t mask = fctx->bases[call_cntr + i];
+            uint8_t mask = fctx->code[call_cntr + i];
             if (mask == UNKNOWN_SYMBOL) 
             {
                 ereport(ERROR, (errmsg("Invalid base in DNA during kmer generation")));
