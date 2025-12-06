@@ -273,7 +273,7 @@ CREATE FUNCTION spg_kmer_leaf_consistent(internal, internal)
 
 -- Define SP-GiST Operator Class
 CREATE OPERATOR CLASS kmer_spgist_ops
-  FOR TYPE kmer USING spgist AS
+  DEFAULT FOR TYPE kmer USING spgist AS
     OPERATOR 1  =  (kmer, kmer),
     OPERATOR 2  ^@ (kmer, kmer),
     OPERATOR 3  @> (qkmer, kmer),
