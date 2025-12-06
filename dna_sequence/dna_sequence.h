@@ -38,7 +38,7 @@
 /* --- Argument and return macros --- */
 #define PG_GETARG_DNA_P(n) \
     ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
-#define PG_RETURN_DNA_P(x) PG_RETURN_POINTER(x)
+#define PG_RETURN_DNA_P(x)  return DnaPGetDatum(x)
 #define PG_GETARG_KMER_P(n) \
     ((Kmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
 #define PG_RETURN_KMER_P(x)  return KmerPGetDatum(x)
@@ -52,7 +52,7 @@
 #define BASE_G 0x04 // G = 0100
 #define BASE_T 0x08 // T = 1000
 
-#define BASE_U 0x010
+#define BASE_U 0x10
 #define BASE_Y (BASE_C | BASE_T)
 #define BASE_M (BASE_A | BASE_C)
 #define BASE_R (BASE_A | BASE_G)
@@ -88,7 +88,7 @@ typedef struct
 } Qkmer;
 
 typedef struct {
-    char *bases;
+    uint8_t *bases;
     int dna_length;
     int k;
     int num_kmers;

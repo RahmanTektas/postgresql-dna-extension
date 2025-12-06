@@ -4,6 +4,12 @@
 
 PG_MODULE_MAGIC;
 
+static inline int
+DNA_LEN(Dna *d)
+{
+    return VARSIZE_ANY_EXHDR(d);
+}
+
 static uint8_t
 char_to_mask(char c, bool strict)
 {
@@ -85,7 +91,6 @@ Dna *dna_parse(const char *str)
                  errmsg("invalid input syntax for type dna: \"%s\"", str),
                  errdetail("dna must be 1-255 bases long, current length : %li", len)));
 
-    // Validation loop
     for (i = 0; i < len; i++)
     {
         uint8_t mask = char_to_mask(str[i], true);
@@ -102,7 +107,14 @@ Dna *dna_parse(const char *str)
 
     for (i = 0; i < len; i++)
     {
-        dna->bases[i] = (uint8_t) toupper((unsigned char) str[i]);
+		uint8_t mask = char_to_mask(str[i], true);   // strict mode
+        if (mask == UNKNOWN_SYMBOL)
+            ereport(ERROR,
+                    (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                     errmsg("invalid DNA base: '%c'", str[i]),
+                     errdetail("Only A, C, G, T are allowed.")));
+
+        dna->bases[i] = mask;
     }
 
     return dna;
@@ -110,25 +122,23 @@ Dna *dna_parse(const char *str)
 
 char * dna_to_str(const Dna *dna)
 {
-    char *result = palloc(dna->vl_len_ + 1);  // +1 for '\0'
+	int len = VARSIZE_ANY_EXHDR(dna);
+    char *result = palloc(len + 1);  // +1 for '\0'
 
-    for (size_t i = 0; i < dna->vl_len_; i++)
+    for (size_t i = 0; i < len; i++)
     {
-        uint8_t mask = char_to_mask((char)dna->bases[i], true);
-        if (mask != UNKNOWN_SYMBOL)
-        {
-             result[i] = (char)dna->bases[i];
-        }
-        else
+        char c = mask_to_char(dna->bases[i]);
+        if (c == UNKNOWN_SYMBOL)
         {
              ereport(ERROR,
                     (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
                      errmsg("invalid DNA base: '%c'", dna->bases[i]),
                      errdetail("Only A, C, G, T are allowed.")));
         }
+        result[i] = c;
     }
 
-    result[dna->vl_len_] = '\0';
+    result[len] = '\0';
     return result;
 }
 
@@ -190,11 +200,11 @@ Kmer * kmer_parse(char **str)
         uint8_t mask = char_to_mask(s[i], true);
         if (mask == UNKNOWN_SYMBOL)
         {
+            kmer->code[i] = UNKNOWN_SYMBOL;
             ereport(ERROR,
                     (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
                      errmsg("invalid DNA base in kmer: \"%c\"", s[i]),
                      errdetail("Only A, C, G, T are allowed.")));
-            kmer->code[i] = UNKNOWN_SYMBOL; 
         }
         else
         {
@@ -333,15 +343,15 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
         dna = PG_GETARG_DNA_P(0);
         k = PG_GETARG_INT32(1);
 
-        if (k <= 0 || k > dna->vl_len_)
+        if (k <= 0 || k > DNA_LEN(dna))
             ereport(ERROR, (errmsg("Invalid k")));
 
         fctx = palloc(sizeof(generate_kmers_fctx));
-        fctx->dna_length = dna->vl_len_;
+        fctx->dna_length = DNA_LEN(dna);
         fctx->k = k;
-        fctx->num_kmers = dna->vl_len_ - k + 1;
-        fctx->bases = palloc(dna->vl_len_);
-        memcpy(fctx->bases, dna->bases, dna->vl_len_);
+        fctx->num_kmers = fctx->dna_length - k + 1;
+        fctx->bases = (uint8_t*) palloc(fctx->dna_length);
+        memcpy(fctx->bases, dna->bases, fctx->dna_length);
 
         funcctx->user_fctx = fctx;
         funcctx->max_calls = fctx->num_kmers;
@@ -360,7 +370,7 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
         for (i = 0; i < fctx->k; i++)
         {
             // Use helper
-            uint8_t mask = char_to_mask((char)fctx->bases[call_cntr + i], true);
+			uint8_t mask = fctx->bases[call_cntr + i];
             if (mask == UNKNOWN_SYMBOL) 
             {
                  // Should not happen for valid Dna type, but safety fallback
