@@ -1,7 +1,6 @@
 #include "dna_sequence.h"
 #include <stdint.h>
 
-
 PG_MODULE_MAGIC;
 
 static inline int
@@ -83,6 +82,8 @@ Dna *dna_parse(const char *str)
 {
     size_t len = strlen(str);
     Dna *dna;
+    // Use VARDATA() for safe write access to the data array
+    uint8_t *data; 
     size_t i;
 
     if (len == 0 || len > UINT8_MAX)
@@ -91,30 +92,21 @@ Dna *dna_parse(const char *str)
                  errmsg("invalid input syntax for type dna: \"%s\"", str),
                  errdetail("dna must be 1-255 bases long, current length : %li", len)));
 
+    dna = dna_alloc((uint8_t) len);
+    data = (uint8_t *) VARDATA(dna); 
+
     for (i = 0; i < len; i++)
     {
         uint8_t mask = char_to_mask(str[i], true);
         if (mask == UNKNOWN_SYMBOL)
         {
              ereport(ERROR,
-                        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-                         errmsg("invalid DNA base: '%c'", str[i]),
-                         errdetail("Only A, C, G, T are allowed.")));
+                         (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                          errmsg("invalid DNA base: '%c'", str[i]),
+                          errdetail("Only A, C, G, T are allowed.")));
         }
-    }
-
-    dna = dna_alloc((uint8_t) len);
-
-    for (i = 0; i < len; i++)
-    {
-		uint8_t mask = char_to_mask(str[i], true);   // strict mode
-        if (mask == UNKNOWN_SYMBOL)
-            ereport(ERROR,
-                    (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-                     errmsg("invalid DNA base: '%c'", str[i]),
-                     errdetail("Only A, C, G, T are allowed.")));
-
-        dna->bases[i] = mask;
+        
+        data[i] = mask;
     }
 
     return dna;
@@ -122,19 +114,14 @@ Dna *dna_parse(const char *str)
 
 char * dna_to_str(const Dna *dna)
 {
+    // Use VARDATA_ANY to safely read the data from a Datum
+    uint8_t *data = (uint8_t *) VARDATA_ANY(dna);
 	int len = VARSIZE_ANY_EXHDR(dna);
     char *result = palloc(len + 1);  // +1 for '\0'
 
     for (size_t i = 0; i < len; i++)
     {
-        char c = mask_to_char(dna->bases[i]);
-        if (c == UNKNOWN_SYMBOL)
-        {
-             ereport(ERROR,
-                    (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-                     errmsg("invalid DNA base: '%c'", dna->bases[i]),
-                     errdetail("Only A, C, G, T are allowed.")));
-        }
+        char c = mask_to_char(data[i]);
         result[i] = c;
     }
 
@@ -185,6 +172,8 @@ Kmer * kmer_parse(char **str)
     const char *s = *str;
     size_t len = strlen(s);
     Kmer *kmer;
+    // Use VARDATA() for safe write access
+    uint8_t *data; 
     size_t i;
 
     if (len == 0 || len > 32)
@@ -194,21 +183,21 @@ Kmer * kmer_parse(char **str)
                  errdetail("kmer must be 1–32 bases long, current len: %li", len)));
 
     kmer = kmer_alloc((uint8_t) len);
+    data = (uint8_t *) VARDATA(kmer);
 
     for (i = 0; i < len; i++)
     {
         uint8_t mask = char_to_mask(s[i], true);
         if (mask == UNKNOWN_SYMBOL)
         {
-            kmer->code[i] = UNKNOWN_SYMBOL;
             ereport(ERROR,
-                    (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-                     errmsg("invalid DNA base in kmer: \"%c\"", s[i]),
-                     errdetail("Only A, C, G, T are allowed.")));
+                        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                         errmsg("invalid DNA base in kmer: \"%c\"", s[i]),
+                         errdetail("Only A, C, G, T are allowed.")));
         }
         else
         {
-            kmer->code[i] = mask;
+            data[i] = mask;
         }
     }
 
@@ -217,17 +206,19 @@ Kmer * kmer_parse(char **str)
 
 char * kmer_to_str(const Kmer *k)
 {
+    // Use VARDATA_ANY to safely read the data
+    uint8_t *data = (uint8_t *) VARDATA_ANY(k);
 	int len = VARSIZE_ANY_EXHDR(k);
     char *result = palloc(len + 1);
 
     for (int i = 0; i < len; i++)
     {
-        char c = mask_to_char(k->code[i]);
+        char c = mask_to_char(data[i]);
         if (c == UNKNOWN_SYMBOL)
         {
              ereport(ERROR,
-                    (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-                     errmsg("invalid internal kmer mask: \"%d\"", k->code[i])));
+                         (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                          errmsg("invalid internal kmer mask: \"%u\"", data[i])));
         }
         result[i] = c;
     }
@@ -259,35 +250,29 @@ Datum kmer_equals(PG_FUNCTION_ARGS)
     Kmer *j = PG_GETARG_KMER_P(1);
 	int k_len = VARSIZE_ANY_EXHDR(k);
 	int j_len = VARSIZE_ANY_EXHDR(j);
+    bool result = false;
 
-    if (k_len != j_len)
+    if (k_len == j_len)
     {
-        PG_FREE_IF_COPY(k, 0);
-        PG_FREE_IF_COPY(j, 1);
-        PG_RETURN_BOOL(false);
-    }
-
-    for (uint8_t i = 0; i < k_len; i++)
-    {
-        if (k->code[i] != j->code[i])
+        // Use VARDATA_ANY for safe pointer comparison
+        if (memcmp(VARDATA_ANY(k), VARDATA_ANY(j), k_len) == 0)
         {
-            PG_FREE_IF_COPY(k, 0);
-            PG_FREE_IF_COPY(j, 1);
-            PG_RETURN_BOOL(false);
+            result = true;
         }
     }
 
     PG_FREE_IF_COPY(k, 0);
     PG_FREE_IF_COPY(j, 1);
-    PG_RETURN_BOOL(true);
+    PG_RETURN_BOOL(result);
 }
 
 PG_FUNCTION_INFO_V1(kmer_length);
 Datum kmer_length(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
+    int32 len = VARSIZE_ANY_EXHDR(k);
     PG_FREE_IF_COPY(k, 0);
-    PG_RETURN_INT32(VARSIZE_ANY_EXHDR(k));
+    PG_RETURN_INT32(len);
 }
 
 PG_FUNCTION_INFO_V1(kmer_starts_with);
@@ -297,24 +282,14 @@ Datum kmer_starts_with(PG_FUNCTION_ARGS)
     Kmer *j = PG_GETARG_KMER_P(1);
 	int k_len = VARSIZE_ANY_EXHDR(k);
     int j_len = VARSIZE_ANY_EXHDR(j);
-    bool result;
-    uint8_t i;
+    bool result = false;
 	
-    if (j_len > k_len)
+    if (j_len <= k_len)
     {
-        PG_FREE_IF_COPY(k, 0);
-        PG_FREE_IF_COPY(j, 1);
-        PG_RETURN_BOOL(false);
-    }
-
-    result = true;
-
-    for (i = 0; i < j_len; i++)
-    {
-        if (k->code[i] != j->code[i])
+        // Use VARDATA_ANY for safe pointer comparison
+        if (memcmp(VARDATA_ANY(k), VARDATA_ANY(j), j_len) == 0)
         {
-            result = false;
-            break;
+            result = true;
         }
     }
 
@@ -332,6 +307,7 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
     int k;
     int call_cntr;
     Kmer *kmer;
+	uint8_t *kmer_data;
     int i;
 
     if (SRF_IS_FIRSTCALL())
@@ -343,15 +319,22 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
         dna = PG_GETARG_DNA_P(0);
         k = PG_GETARG_INT32(1);
 
-        if (k <= 0 || k > DNA_LEN(dna))
-            ereport(ERROR, (errmsg("Invalid k")));
+        if (k <= 0 || k > 32)
+            ereport(ERROR, (errmsg("kmer can not be <= 0 or > 32")));
+
+        if (k > DNA_LEN(dna))
+            ereport(ERROR, 
+           (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+           errmsg("k cannot be larger than the DNA sequence length")));
 
         fctx = palloc(sizeof(generate_kmers_fctx));
         fctx->dna_length = DNA_LEN(dna);
         fctx->k = k;
         fctx->num_kmers = fctx->dna_length - k + 1;
         fctx->bases = (uint8_t*) palloc(fctx->dna_length);
-        memcpy(fctx->bases, dna->bases, fctx->dna_length);
+        
+        // Use VARDATA_ANY to safely copy data from the Dna struct
+        memcpy(fctx->bases, VARDATA_ANY(dna), fctx->dna_length);
 
         funcctx->user_fctx = fctx;
         funcctx->max_calls = fctx->num_kmers;
@@ -365,18 +348,18 @@ Datum generate_kmers(PG_FUNCTION_ARGS)
 
     if (call_cntr < fctx->num_kmers)
     {
-        kmer = kmer_alloc((uint8_t) fctx->k);
+        kmer = kmer_alloc(fctx->k);
+        kmer_data = (uint8_t *) VARDATA(kmer);
 
         for (i = 0; i < fctx->k; i++)
         {
-            // Use helper
-			uint8_t mask = fctx->bases[call_cntr + i];
+            uint8_t mask = fctx->bases[call_cntr + i];
             if (mask == UNKNOWN_SYMBOL) 
             {
-                 // Should not happen for valid Dna type, but safety fallback
-                 ereport(ERROR, (errmsg("Invalid base in DNA during kmer generation")));
+                ereport(ERROR, (errmsg("Invalid base in DNA during kmer generation")));
             }
-            kmer->code[i] = mask;
+            // Write to the safe data pointer
+            kmer_data[i] = mask;
         }
 
         SRF_RETURN_NEXT(funcctx, PointerGetDatum(kmer));
@@ -403,6 +386,8 @@ Qkmer * qkmer_parse(char **str)
     const char *s = *str;
     size_t len = strlen(s);
     Qkmer *qk;
+    // Use VARDATA() for safe write access
+    uint8_t *data; 
     size_t i;
 
     if (len == 0 || len > 32)
@@ -412,20 +397,20 @@ Qkmer * qkmer_parse(char **str)
                  errdetail("qkmer must be 1–32 bases long, current len: %li", len)));
 
     qk = qkmer_alloc((uint8_t) len);
+    data = (uint8_t *) VARDATA(qk);
 
     for (i = 0; i < len; i++)
     {
-        // Use helper in non-strict mode (allows all IUPAC)
         uint8_t mask = char_to_mask(s[i], false);
         
         if (mask == UNKNOWN_SYMBOL)
         {
             ereport(ERROR,
-                    (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-                     errmsg("invalid DNA base in qkmer: \"%c\"", s[i]),
-                     errdetail("Allowed: A, C, G, T, R, Y, S, W, K, M, B, D, H, V, N.")));
+                        (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+                         errmsg("invalid DNA base in qkmer: \"%c\"", s[i]),
+                         errdetail("Allowed: A, C, G, T, U, R, Y, S, W, K, M, B, D, H, V, N.")));
         }
-        qk->code[i] = mask;
+        data[i] = mask;
     }
 
     return qk;
@@ -433,12 +418,14 @@ Qkmer * qkmer_parse(char **str)
 
 char * qkmer_to_str(const Qkmer *qk)
 {
+    // Use VARDATA_ANY to safely read the data
+    uint8_t *data = (uint8_t *) VARDATA_ANY(qk);
 	int32 len = VARSIZE_ANY_EXHDR(qk);
 	char *result = palloc(len + 1);
 
     for (int i = 0; i < len; i++)
     {
-        result[i] = mask_to_char(qk->code[i]);
+        result[i] = mask_to_char(data[i]);
     }
 
     result[len] = '\0';
@@ -477,7 +464,8 @@ Datum
 kmer_hash(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
-    uint32 hash = hash_any((unsigned char *) k->code, VARSIZE_ANY_EXHDR(k));
+    // Use VARDATA_ANY to safely pass the pointer to hash_any
+    uint32 hash = hash_any((unsigned char *) VARDATA_ANY(k), VARSIZE_ANY_EXHDR(k));
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_UINT32(hash);
 }
@@ -493,7 +481,8 @@ Datum kmer_cmp(PG_FUNCTION_ARGS)
     int result = 0;
     
     int minlen = (a_len < b_len) ? a_len : b_len;
-    result = memcmp(a->code, b->code, minlen);
+    // Use VARDATA_ANY for safe data comparison
+    result = memcmp(VARDATA_ANY(a), VARDATA_ANY(b), minlen);
     
     if (result == 0) {
         if (a_len < b_len) result = -1;
