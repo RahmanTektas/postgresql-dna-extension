@@ -151,7 +151,7 @@ PG_FUNCTION_INFO_V1(dna_length);
 Datum dna_length(PG_FUNCTION_ARGS)
 {
     Dna *dna = PG_GETARG_DNA_P(0);
-    int32 len = VARSIZE_ANY_EXHDR(dna);
+    int32 len = DNA_LEN(dna);
     PG_FREE_IF_COPY(dna, 0);
     PG_RETURN_INT32(len);
 }
@@ -248,8 +248,8 @@ Datum kmer_equals(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     Kmer *j = PG_GETARG_KMER_P(1);
-	int k_len = VARSIZE_ANY_EXHDR(k);
-	int j_len = VARSIZE_ANY_EXHDR(j);
+	int k_len = KMER_LEN(k);
+	int j_len = KMER_LEN(j);
     bool result = false;
 
     if (k_len == j_len)
@@ -270,7 +270,7 @@ PG_FUNCTION_INFO_V1(kmer_length);
 Datum kmer_length(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
-    int32 len = VARSIZE_ANY_EXHDR(k);
+    int32 len = KMER_LEN(k);
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_INT32(len);
 }
@@ -280,8 +280,8 @@ Datum kmer_starts_with(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     Kmer *j = PG_GETARG_KMER_P(1);
-	int k_len = VARSIZE_ANY_EXHDR(k);
-    int j_len = VARSIZE_ANY_EXHDR(j);
+	int k_len = KMER_LEN(k);
+    int j_len = KMER_LEN(j);
     bool result = false;
 	
     if (j_len <= k_len)
@@ -453,7 +453,7 @@ Datum qkmer_length(PG_FUNCTION_ARGS)
 {
     Qkmer *qk = PG_GETARG_QKMER_P(0);
     PG_FREE_IF_COPY(qk, 0);
-    PG_RETURN_INT32(VARSIZE_ANY_EXHDR(qk));
+    PG_RETURN_INT32(QKMER_LEN(qk));
 }
 
 /*
@@ -465,7 +465,7 @@ kmer_hash(PG_FUNCTION_ARGS)
 {
     Kmer *k = PG_GETARG_KMER_P(0);
     // Use VARDATA_ANY to safely pass the pointer to hash_any
-    uint32 hash = hash_any((unsigned char *) VARDATA_ANY(k), VARSIZE_ANY_EXHDR(k));
+    uint32 hash = hash_any((unsigned char *) VARDATA_ANY(k), KMER_LEN(k));
     PG_FREE_IF_COPY(k, 0);
     PG_RETURN_UINT32(hash);
 }
@@ -475,8 +475,8 @@ Datum kmer_cmp(PG_FUNCTION_ARGS)
 {
     Kmer *a = PG_GETARG_KMER_P(0);
     Kmer *b = PG_GETARG_KMER_P(1);
-	int a_len = VARSIZE_ANY_EXHDR(a);
-    int b_len = VARSIZE_ANY_EXHDR(b);
+	int a_len = KMER_LEN(a);
+    int b_len = KMER_LEN(b);
 	
     int result = 0;
     

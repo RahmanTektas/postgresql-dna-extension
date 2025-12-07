@@ -6,48 +6,6 @@
 #define KMER_PREFIX_STRATEGY        2   /* kmer ^@ kmer (prefix) */
 #define QKMER_CONTAINS_STRATEGY     3   /* qkmer @> kmer (pattern match) */
 
-/*
- * Helper to safely convert Datum to Kmer*.
- * Ensures the varlena is detoasted and has a 4-byte header
- * so that the (int32 vl_len_) alignment matches.
- */
-static Kmer *
-datum_to_kmer(Datum d)
-{
-    return (Kmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d));
-}
-
-/* * Same for Qkmer 
- */
-static Qkmer *
-datum_to_qkmer(Datum d)
-{
-    return (Qkmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d));
-}
-
-static inline uint8_t *
-KMER_DATA(Kmer *k)
-{
-    return k->code;
-}
-
-static inline int
-KMER_LEN(Kmer *k)
-{
-    return VARSIZE_ANY_EXHDR(k);
-}
-
-static inline uint8_t *
-QKMER_DATA(Qkmer *q)
-{
-    return q->code;
-}
-
-static inline int
-QKMER_LEN(Qkmer *q)
-{
-    return VARSIZE_ANY_EXHDR(q);
-}
 
 static bool
 qkmer_base_matches(uint8_t qbase, uint8_t kbase)
