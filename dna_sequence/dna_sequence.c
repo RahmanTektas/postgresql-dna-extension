@@ -3,11 +3,6 @@
 
 PG_MODULE_MAGIC;
 
-static inline int
-DNA_LEN(Dna *d)
-{
-    return VARSIZE_ANY_EXHDR(d);
-}
 
 static uint8_t
 char_to_mask(char c, bool strict)
