@@ -11,7 +11,7 @@ CREATE EXTENSION dna_sequence;
 -- Test parsing and output
 \echo '\n--- Test 1: Qkmer parsing and output ---'
 SELECT 'ACGT'::qkmer AS qk1,
-       'ACGT'::qkmer AS qk2,
+       'ATGT'::qkmer AS qk2,
        'AGCT'::qkmer AS qk3;
 
 
@@ -37,12 +37,12 @@ SELECT 'ANGT'::qkmer @> 'ACGT'::kmer AS match_N_true,   -- true: N covers C
 
 \echo '\n--- Test 5: Multiple ambiguous positions ---'
 SELECT
-  'RNYT'::qkmer @> 'AACT'::kmer AS test_same_len_true_1,        -- all positions satisfy constraints
-  'RNYT'::qkmer @> 'GGTT'::kmer AS test_same_len_true_2,        -- also valid
-  'RNYT'::qkmer @> 'CCCT'::kmer AS test_false_wrong_first_base, -- R does not match C
-  'AANN'::qkmer @> 'AAGT'::kmer AS test_N_any_true,             -- N matches G and T
-  'AARY'::qkmer @> 'AAGT'::kmer AS test_RY_true,                -- valid match (R=G, Y=T)
-  'AARY'::qkmer @> 'AACT'::kmer AS test_RY_false_last_base;     -- Y cannot match C here
+  'RNYT'::qkmer @> 'AACT'::kmer AS true_test_same_len_1,        -- all positions satisfy constraints
+  'RNYT'::qkmer @> 'GGTT'::kmer AS true_test_same_len_2,        -- also valid
+  'RNYT'::qkmer @> 'CCCT'::kmer AS false_test_wrong_first_base, -- R does not match C
+  'AANN'::qkmer @> 'AAGT'::kmer AS true_test_N_any,             -- N matches G and T
+  'AARY'::qkmer @> 'AAGT'::kmer AS true_test_RY,                -- valid match (R=G, Y=T)
+  'AARY'::qkmer @> 'AACT'::kmer AS false_test_RY_last_base;     -- Y cannot match C here
 
 
 
@@ -75,11 +75,27 @@ SELECT count(*) as total_rows_loaded
 FROM qkmer_targets_dataset;
 
 
-\echo '\n--- Test 9: Search for qkmers that include the pattern "AAAN" (Wildcard) ---'
+\echo '\n--- Test 9: Search for qkmers that include the pattern "AAAN" (Wildcard) : should error ---'
 SELECT val AS qkmer_including_AAAN
 FROM qkmer_targets_dataset
 WHERE val @> 'AAAN'::kmer
 LIMIT 5;
+
+
+\echo '\n--- Test 10: Check whether qkmers cover the kmer "CGTANY" ---'
+
+DROP TABLE IF EXISTS qkmer_with_cgtany;
+CREATE TABLE qkmer_with_cgtany (
+    id  bigserial PRIMARY KEY,
+    val qkmer
+);
+
+INSERT INTO qkmer_with_cgtany (val)
+VALUES ('CGTANY'::qkmer);
+
+SELECT val AS qkmer_covering_CGTA
+FROM qkmer_with_cgtany
+WHERE val @> 'CGTA'::kmer;
 
 
 \echo '\n--- Test 10: Check whether qkmers cover the kmer "CGTA" ---'

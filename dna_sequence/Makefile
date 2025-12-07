@@ -41,6 +41,8 @@ run: docker-reinstall docker-sync-scriptpy
 	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_kmer.sql
 	@echo "\nRunning QKMER tests..."
 	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_qkmer.sql
+	@echo "\nRunning SPGIST tests..."
+	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_spgist.sql
 
 
 .PHONY: docker-sync-scriptpy

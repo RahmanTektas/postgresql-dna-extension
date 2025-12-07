@@ -18,6 +18,11 @@ CREATE EXTENSION dna_sequence;
 
 
 \echo '\n--- Test 1: Setup and Operator Class Check ---'
+-- expecting
+--  operator_class_name | access_method | input_type | schema
+-- ---------------------+---------------+------------+--------
+--  kmer_spgist_ops     | spgist        | kmer       | public
+
 DROP TABLE IF EXISTS kmer_test;
 CREATE TABLE kmer_test (val kmer);
 
@@ -41,8 +46,6 @@ INSERT INTO kmer_test VALUES
 \echo '\n--- Test 3: Creating SP-GIST Index ---'
 CREATE INDEX idx_kmer_spgist
 ON kmer_test USING spgist (val public.kmer_spgist_ops);
-
-ANALYZE kmer_test;
 
 SET enable_seqscan = OFF;
 
@@ -86,7 +89,7 @@ FROM kmer_test
 WHERE 'TGCR'::qkmer @> val;
 
 
-\echo '\n--- Test 8: Length Mismatch ---'
+\echo '\n--- Test 8: Length Mismatch --- : expecting 0 rows'
 SELECT val AS length_mismatch_kmer
 FROM kmer_test
 WHERE 'AAA'::qkmer @> val;

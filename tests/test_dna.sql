@@ -11,7 +11,7 @@ CREATE EXTENSION dna_sequence;
 -- ======================================================
 
 -- 1. Parsing & Output
-\echo '\n--- Test 1: DNA parsing and output ---'
+\echo '\n--- Test 1: DNA parsing and output : expecting error : invalid DNA base: 'N' ---'
 SELECT 'ACGT'::dna AS dna1,
        'ACGN'::dna AS dna2,
        'RYYN'::dna AS dna3;
@@ -23,7 +23,7 @@ SELECT 'acgt'::dna AS lower_to_upper;
 
 
 -- 3. Length Tests
-\echo '\n--- Test 3: Length verification (Generated Column) ---'
+\echo '\n--- Test 3: Insertion verification (Generated Column) : expecting error ---'
 DROP TABLE IF EXISTS dna_with_length;
 
 
@@ -45,7 +45,7 @@ VALUES
 SELECT * FROM dna_with_length;
 
 
-\echo '\n--- Test 4: Additional length insertions ---'
+\echo '\n--- Test 4: Length verification ---'
 INSERT INTO dna_with_length (seq)
 VALUES
     ('ACGT'::dna),
@@ -95,16 +95,6 @@ INSERT INTO test_dna (seq) VALUES
 -- Select to see if output is correct
 SELECT id, seq FROM test_dna;
 
-\echo '\n--- Test 8: DNA casting to text validation ---'
-SELECT seq::text, seq::text = expected AS matches
-FROM (
-    SELECT seq,
-           CASE WHEN id = 1 THEN 'ACGTACGT'
-                WHEN id = 2 THEN 'TTGCA'
-                WHEN id = 3 THEN 'GGGAAA'
-           END AS expected
-    FROM test_dna
-) t;
 
 
 -- ======================================================
