@@ -106,24 +106,39 @@ To properly validate the PostgreSQL DNA extension, you should test it using both
 ## 1. Synthetic DNA Sequences
 
 For development and early debugging, you can easily generate random DNA sequences of arbitrary length. Synthetic data is useful for:
-verifying basic functionality of kmer and qkmer
-testing boundary cases (length, invalid bases, wildcard coverage)
-validating SP-GiST navigation on controlled patterns
+* verifying basic functionality of kmer and qkmer
+* testing boundary cases (length, invalid bases, wildcard coverage)
+* validating SP-GiST navigation on controlled patterns
 
 ## 2. Real Genomic Data from NCBI SRA
 To ensure robustness on real datasets, test the extension using public sequencing reads from the NCBI Sequence Read Archive (SRA). These datasets reflect the noise, scale, and biological complexity encountered in actual genomic workloads.
 
-## Download SRA data
-- ```prefetch SRR026760```
+### Install SRA Toolkit (Prerequisite)
+If running inside the Docker container, run these commands first:
 
-## Convert .sra → .fastq
-- ```fasterq-dump SRR026760.sra -O data/```
+- ```apt-get update```
+- ```apt-get install sra-toolkit```
 
-## Extract clean DNA reads or k-mers
+### Download SRA data
+First, create a specific data directory to keep the project clean:
+
+- ```mkdir -p data```
+
+Then, prefetch the data into this directory:
+
+- ```prefetch SRR026760 --output-directory data/```
+
+### Convert .sra → .fastq
+- ```fasterq-dump data/SRR026760/SRR026760.sra -O data/```
+
+### Extract clean DNA reads or k-mers
+Use the provided Python scripts to convert the FASTQ data into formats compatible with your PostgreSQL extension.
+
+*Generate DNA sequences:*
 - ```python extract_dna.py data/SRR026760.fastq 0 > dna_36.txt```
 
-- ```python extract_qkmer.py data/SRR026760.fastq 5 > qkmeroutput.txt```
-
+*Generate Q-Kmers:*
+- ```python generate_qkmer.py data/SRR026760.fastq 5 > qkmeroutput.txt```
 
 ## Summary
 Using synthetic sequences ensures your code behaves correctly in controlled cases, while real-world SRA datasets confirm that your extension scales to real genomic data and handles biological noise. Together, these tests provide complete coverage for validating the k-mer/q-mer operators, SP-GiST indexing, and overall functionality of the DNA extension.
