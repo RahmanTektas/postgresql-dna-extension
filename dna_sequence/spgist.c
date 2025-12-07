@@ -6,48 +6,6 @@
 #define KMER_PREFIX_STRATEGY        2   /* kmer ^@ kmer (prefix) */
 #define QKMER_CONTAINS_STRATEGY     3   /* qkmer @> kmer (pattern match) */
 
-/*
- * Helper to safely convert Datum to Kmer*.
- * Ensures the varlena is detoasted and has a 4-byte header
- * so that the (int32 vl_len_) alignment matches.
- */
-static Kmer *
-datum_to_kmer(Datum d)
-{
-    return (Kmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d));
-}
-
-/* * Same for Qkmer 
- */
-static Qkmer *
-datum_to_qkmer(Datum d)
-{
-    return (Qkmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d));
-}
-
-static inline uint8_t *
-KMER_DATA(Kmer *k)
-{
-    return k->code;
-}
-
-static inline int
-KMER_LEN(Kmer *k)
-{
-    return VARSIZE_ANY_EXHDR(k);
-}
-
-static inline uint8_t *
-QKMER_DATA(Qkmer *q)
-{
-    return q->code;
-}
-
-static inline int
-QKMER_LEN(Qkmer *q)
-{
-    return VARSIZE_ANY_EXHDR(q);
-}
 
 static bool
 qkmer_base_matches(uint8_t qbase, uint8_t kbase)
@@ -176,7 +134,7 @@ spg_kmer_choose(PG_FUNCTION_ARGS)
 {
     spgChooseIn *in = (spgChooseIn *) PG_GETARG_POINTER(0);
     spgChooseOut *out = (spgChooseOut *) PG_GETARG_POINTER(1);
-    Kmer       *inKmer = datum_to_kmer(in->datum);
+    Kmer       *inKmer = DatumGetKmerPDetoasted(in->datum);
     uint8_t    *inData = KMER_DATA(inKmer);
     int         inLen = KMER_LEN(inKmer);
     uint8_t    *prefixData = NULL;
@@ -187,7 +145,7 @@ spg_kmer_choose(PG_FUNCTION_ARGS)
 
     if (in->hasPrefix)
     {
-        Kmer *prefixKmer = datum_to_kmer(in->prefixDatum);
+        Kmer *prefixKmer = DatumGetKmerPDetoasted(in->prefixDatum);
 
         prefixData = KMER_DATA(prefixKmer);
         prefixLen = KMER_LEN(prefixKmer);
@@ -307,7 +265,7 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
     spgPickSplitIn  *in  = (spgPickSplitIn *) PG_GETARG_POINTER(0);
     spgPickSplitOut *out = (spgPickSplitOut *) PG_GETARG_POINTER(1);
 
-    Kmer *k0       = datum_to_kmer(in->datums[0]);
+    Kmer *k0       = DatumGetKmerPDetoasted(in->datums[0]);
     int         i,
                 commonLen;
     spgNodePtr *nodes;
@@ -315,7 +273,7 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
 	commonLen = KMER_LEN(k0);
     for (i = 1; i < in->nTuples && commonLen > 0; i++)
     {
-        Kmer *ki   = datum_to_kmer(in->datums[i]);
+        Kmer *ki   = DatumGetKmerPDetoasted(in->datums[i]);
         int       tmp = commonPrefix(KMER_DATA(k0),
                                  KMER_DATA(ki),
                                  KMER_LEN(k0),
@@ -342,7 +300,7 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
  
     for (i = 0; i < in->nTuples; i++)
     {
-        Kmer       *ki = datum_to_kmer(in->datums[i]);
+        Kmer       *ki = DatumGetKmerPDetoasted(in->datums[i]);
  
         if (commonLen < KMER_LEN(ki))
             nodes[i].c = ki->code[commonLen];
@@ -367,7 +325,7 @@ spg_kmer_picksplit(PG_FUNCTION_ARGS)
 
     for (i = 0; i < in->nTuples; i++)
     {
-        Kmer       *ki = datum_to_kmer(nodes[i].d);
+        Kmer       *ki = DatumGetKmerPDetoasted(nodes[i].d);
         Datum       leafD;
  
         if (i == 0 || nodes[i].c != nodes[i - 1].c)
@@ -404,7 +362,10 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
     int         i;
 
     /* Reconstruct the kmer at this level */
-	reconstructedValue = datum_to_kmer(in->reconstructedValue);
+	if (in->level == 0)
+		reconstructedValue = NULL;
+	else
+		reconstructedValue = DatumGetKmerPDetoasted(in->reconstructedValue);
 
     Assert(reconstructedValue == NULL ? in->level == 0 :
            KMER_LEN(reconstructedValue) == in->level);
@@ -412,7 +373,7 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
     maxReconstrLen = in->level + 1;
     if (in->hasPrefix)
     {
-        prefixKmer = datum_to_kmer(in->prefixDatum);
+        prefixKmer = DatumGetKmerPDetoasted(in->prefixDatum);
         prefixSize = KMER_LEN(prefixKmer);
         maxReconstrLen += prefixSize;
     }
@@ -459,7 +420,7 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
             {
                 case KMER_EQUAL_STRATEGY:
                     {
-                        Kmer       *qKmer = datum_to_kmer(in->scankeys[j].sk_argument);
+                        Kmer       *qKmer = DatumGetKmerPDetoasted(in->scankeys[j].sk_argument);
                         int         qLen = KMER_LEN(qKmer);
                         int         r;
                         r = memcmp(KMER_DATA(reconstrKmer), 
@@ -473,7 +434,7 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
 
                 case KMER_PREFIX_STRATEGY:
                     {
-                        Kmer       *qKmer = datum_to_kmer(in->scankeys[j].sk_argument);
+                        Kmer       *qKmer = DatumGetKmerPDetoasted(in->scankeys[j].sk_argument);
                         int         qLen = KMER_LEN(qKmer);
                         int         r;
                         /* Check if reconstructed value matches prefix so far */
@@ -488,7 +449,7 @@ spg_kmer_inner_consistent(PG_FUNCTION_ARGS)
 
                 case QKMER_CONTAINS_STRATEGY:
                     {
-                        Qkmer      *qQkmer = datum_to_qkmer(in->scankeys[j].sk_argument);
+                        Qkmer      *qQkmer = DatumGetQkmerPDetoasted(in->scankeys[j].sk_argument);
                         int         qLen = QKMER_LEN(qQkmer);
                         int         k;
                         /* Check if pattern matches so far */
@@ -551,10 +512,10 @@ spg_kmer_leaf_consistent(PG_FUNCTION_ARGS)
 
     out->recheck = false;
 
-    leafValue = datum_to_kmer(in->leafDatum);
+    leafValue = DatumGetKmerPDetoasted(in->leafDatum);
 
     if (DatumGetPointer(in->reconstructedValue))
-        reconstrValue = datum_to_kmer(in->reconstructedValue);
+        reconstrValue = DatumGetKmerPDetoasted(in->reconstructedValue);
 
     Assert(reconstrValue == NULL ? level == 0 :
            KMER_LEN(reconstrValue) == level);
@@ -584,7 +545,7 @@ spg_kmer_leaf_consistent(PG_FUNCTION_ARGS)
         {
             case KMER_EQUAL_STRATEGY:
                 {
-                    Kmer       *query = datum_to_kmer(in->scankeys[j].sk_argument);
+                    Kmer       *query = DatumGetKmerPDetoasted(in->scankeys[j].sk_argument);
                     int         queryLen = KMER_LEN(query);
 
                     if (queryLen != fullLen)
@@ -600,7 +561,7 @@ spg_kmer_leaf_consistent(PG_FUNCTION_ARGS)
 
             case KMER_PREFIX_STRATEGY:
                 {
-                    Kmer       *query = datum_to_kmer(in->scankeys[j].sk_argument);
+                    Kmer       *query = DatumGetKmerPDetoasted(in->scankeys[j].sk_argument);
                     int         queryLen = KMER_LEN(query);
 
                     /* Check if full kmer starts with query prefix */
@@ -617,7 +578,7 @@ spg_kmer_leaf_consistent(PG_FUNCTION_ARGS)
 
             case QKMER_CONTAINS_STRATEGY:
                 {
-                    Qkmer      *query = datum_to_qkmer(in->scankeys[j].sk_argument);
+                    Qkmer      *query = DatumGetQkmerPDetoasted(in->scankeys[j].sk_argument);
 
                     res = qkmer_matches_kmer(QKMER_DATA(query), 
                                              QKMER_LEN(query),
