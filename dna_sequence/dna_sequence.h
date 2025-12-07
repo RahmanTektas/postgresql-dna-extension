@@ -2,15 +2,12 @@
 #define DNA_SEQUENCE_H
 
 #include "postgres.h"
-
 #include "funcapi.h"
 #include "utils/datum.h"
-
 #include "access/spgist.h"
 #include "access/hash.h"
 
-
-/* --- Argument macros --- */
+// Argument macros
 #define PG_GETARG_DNA_P(n) \
     ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
 #define PG_GETARG_KMER_P(n) \
@@ -18,69 +15,74 @@
 #define PG_GETARG_QKMER_P(n) \
     ((Qkmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
 
-/* --- Datum macros --- */
+// Datum -> detoasted pointer macros
 #define DatumGetKmerPDetoasted(d) \
     ((Kmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d)))
 #define DatumGetQkmerPDetoasted(d) \
     ((Qkmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d)))
 
-/*  Basic and IUPAC bases  */
-#define BASE_A 0x01 // A = 0001
-#define BASE_C 0x02 // C = 0010
-#define BASE_G 0x04 // G = 0100
-#define BASE_T 0x08 // T = 1000
+// DNA and IUPAC base encoding
+#define BASE_A      0x01 // A = 0001
+#define BASE_C      0x02 // C = 0010
+#define BASE_G      0x04 // G = 0100
+#define BASE_T      0x08 // T = 1000
 
-#define BASE_U 0x10
-#define BASE_Y (BASE_C | BASE_T)
-#define BASE_M (BASE_A | BASE_C)
-#define BASE_R (BASE_A | BASE_G)
-#define BASE_W (BASE_A | BASE_T)
-#define BASE_S (BASE_C | BASE_G)
-#define BASE_K (BASE_G | BASE_T)
-#define BASE_V (BASE_A | BASE_C | BASE_G)
-#define BASE_H (BASE_A | BASE_C | BASE_T)
-#define BASE_D (BASE_A | BASE_G | BASE_T)
-#define BASE_B (BASE_C | BASE_G | BASE_T)
-#define BASE_N (BASE_A | BASE_C | BASE_G | BASE_T)
+#define BASE_U      0x10
+#define BASE_Y      (BASE_C | BASE_T)
+#define BASE_M      (BASE_A | BASE_C)
+#define BASE_R      (BASE_A | BASE_G)
+#define BASE_W      (BASE_A | BASE_T)
+#define BASE_S      (BASE_C | BASE_G)
+#define BASE_K      (BASE_G | BASE_T)
+#define BASE_V      (BASE_A | BASE_C | BASE_G)
+#define BASE_H      (BASE_A | BASE_C | BASE_T)
+#define BASE_D      (BASE_A | BASE_G | BASE_T)
+#define BASE_B      (BASE_C | BASE_G | BASE_T)
+#define BASE_N      (BASE_A | BASE_C | BASE_G | BASE_T)
+
 #define UNKNOWN_SYMBOL '?'
 
-/* --- Dna structure --- */
+// Dna structure
 typedef struct
 {
-    int32 vl_len_;
-    uint8_t code[FLEXIBLE_ARRAY_MEMBER];
+    int32    vl_len_;
+    uint8_t  code[FLEXIBLE_ARRAY_MEMBER];
 } Dna;
 
-/* --- Kmer structure --- */
+// Kmer structure
 typedef struct
 {
-    int32       vl_len_;        /* varlena header */
-    uint8_t       code[FLEXIBLE_ARRAY_MEMBER];
+    int32    vl_len_;
+    uint8_t  code[FLEXIBLE_ARRAY_MEMBER];
 } Kmer;
 
-/* --- QKmer structure --- */
+// Qkmer structure
 typedef struct
 {
-    int32       vl_len_;        /* varlena header */
-    uint8_t       code[FLEXIBLE_ARRAY_MEMBER];
+    int32    vl_len_;
+    uint8_t  code[FLEXIBLE_ARRAY_MEMBER];
 } Qkmer;
 
-typedef struct {
+
+// generate_kmers function context
+typedef struct
+{
     uint8_t *code;
-    int dna_length;
-    int k;
-    int num_kmers;
+    int      dna_length;
+    int      k;
+    int      num_kmers;
 } generate_kmers_fctx;
 
-/* Struct for sorting values in picksplit */
+// Node pointer used in SP-GiST picksplit
 typedef struct spgNodePtr
 {
-    Datum       d;
-    int         i;
-    int16       c;
+    Datum    d;
+    int      i;
+    int16    c;
 } spgNodePtr;
 
 
+// Inline accessors
 static inline uint8_t *
 KMER_DATA(Kmer *k)
 {
@@ -111,12 +113,12 @@ DNA_LEN(Dna *d)
     return VARSIZE_ANY_EXHDR(d);
 }
 
-/* Function declarations */
-Dna    *dna_parse(const char *str);
-char   *dna_to_str(const Dna *dna);
-Kmer   *kmer_parse(char **str);
-char   *kmer_to_str(const Kmer *k);
-Qkmer  *qkmer_parse(char **str);
-char   *qkmer_to_str(const Qkmer *k);
+// Function declarations
+Dna   *dna_parse(const char *str);
+char  *dna_to_str(const Dna *dna);
+Kmer  *kmer_parse(char **str);
+char  *kmer_to_str(const Kmer *k);
+Qkmer *qkmer_parse(char **str);
+char  *qkmer_to_str(const Qkmer *k);
 
-#endif
+#endif // DNA_SEQUENCE_H
