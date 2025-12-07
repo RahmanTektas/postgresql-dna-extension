@@ -129,7 +129,7 @@ Datum dna_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
     Dna *dna = dna_parse(str);
-    PG_RETURN_DNA_P(dna);
+	PG_RETURN_POINTER(dna);
 }
 
 
@@ -226,7 +226,7 @@ PG_FUNCTION_INFO_V1(kmer_in);
 Datum kmer_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
-    PG_RETURN_KMER_P(kmer_parse(&str));
+    PG_RETURN_POINTER(kmer_parse(&str));
 }
 
 PG_FUNCTION_INFO_V1(kmer_out);
@@ -431,7 +431,7 @@ PG_FUNCTION_INFO_V1(qkmer_in);
 Datum qkmer_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
-    PG_RETURN_QKMER_P(qkmer_parse(&str));
+    PG_RETURN_POINTER(qkmer_parse(&str));
 }
 
 PG_FUNCTION_INFO_V1(qkmer_out);

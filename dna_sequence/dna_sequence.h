@@ -27,24 +27,19 @@
 #include "access/hash.h"
 
 
-/* --- Pointer conversion macros --- */
-#define DnaPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetDnaP(x)   ((Dna *) DatumGetPointer(x))
-#define KmerPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetKmerP(x)   ((Kmer *) DatumGetPointer(x))
-#define QkmerPGetDatum(x)   PointerGetDatum(x)
-#define DatumGetQkmerP(x)   ((Qkmer *) DatumGetPointer(x))
-
-/* --- Argument and return macros --- */
+/* --- Argument macros --- */
 #define PG_GETARG_DNA_P(n) \
     ((Dna *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
-#define PG_RETURN_DNA_P(x)  return DnaPGetDatum(x)
 #define PG_GETARG_KMER_P(n) \
     ((Kmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
-#define PG_RETURN_KMER_P(x)  return KmerPGetDatum(x)
 #define PG_GETARG_QKMER_P(n) \
     ((Qkmer *) PG_DETOAST_DATUM(PG_GETARG_DATUM(n)))
-#define PG_RETURN_QKMER_P(x)  return QkmerPGetDatum(x)
+
+/* --- Datum macros --- */
+#define DatumGetKmerPDetoasted(d) \
+    ((Kmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d)))
+#define DatumGetQkmerPDetoasted(d) \
+    ((Qkmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d)))
 
 /*  Basic and IUPAC bases  */
 #define BASE_A 0x01 // A = 0001
@@ -102,24 +97,6 @@ typedef struct spgNodePtr
     int16       c;
 } spgNodePtr;
 
-/*
- * Helper to safely convert Datum to Kmer*.
- * Ensures the varlena is detoasted and has a 4-byte header
- * so that the (int32 vl_len_) alignment matches.
- */
-static inline Kmer *
-datum_to_kmer(Datum d)
-{
-    return (Kmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d));
-}
-
-/* * Same for Qkmer 
- */
-static inline Qkmer *
-datum_to_qkmer(Datum d)
-{
-    return (Qkmer *) pg_detoast_datum((struct varlena *) DatumGetPointer(d));
-}
 
 static inline uint8_t *
 KMER_DATA(Kmer *k)
