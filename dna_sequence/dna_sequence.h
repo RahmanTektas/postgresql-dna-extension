@@ -2,28 +2,11 @@
 #define DNA_SEQUENCE_H
 
 #include "postgres.h"
- 
-#include "access/spgist.h"
-#include "access/spgist_private.h"
-#include "catalog/pg_type.h"
+
+#include "funcapi.h"
 #include "utils/datum.h"
-#include "utils/pg_locale.h"
-#include "utils/varlena.h"
-#include "common/int.h"
-#include "mb/pg_wchar.h"
-#include "utils/fmgrprotos.h"
-#include "varatt.h"
 
-
-
-#include "fmgr.h"
-#include <stdint.h> 
-#include <math.h>
-#include <float.h>
-#include <stdlib.h>
-#include "libpq/pqformat.h"
-#include "funcapi.h"  
-#include "utils/builtins.h"
+#include "access/spgist.h"
 #include "access/hash.h"
 
 
