@@ -1,56 +1,61 @@
 import sys
 import random
 
+
+COMPATIBLE_IUPAC = {
+    'A': ['R', 'M', 'W', 'V', 'H', 'D'],  # Ambiguïtés contenant A
+    'C': ['Y', 'M', 'S', 'V', 'H', 'B'],  # Ambiguïtés contenant C
+    'G': ['R', 'S', 'K', 'V', 'D', 'B'],  # Ambiguïtés contenant G
+    'T': ['Y', 'W', 'K', 'H', 'D', 'B'],  # Ambiguïtés contenant T
+}
+
+
 def dna_to_qkmer(kmer, prob_ambig=0.3, prob_N=0.05):
     """
-    Convert a DNA k-mer into a q-mer (ambiguous nucleotide representation).
+    Convert a DNA k-mer (A/C/G/T) into a q-mer by introducing biologically valid
+        IUPAC ambiguity symbols.
 
-    For each nucleotide:
-      - With probability prob_N: replace with 'N' (fully ambiguous).
-      - Otherwise:
-          - If base is A or G (purines):
-                With prob prob_ambig: replace with 'R'
-                Else: keep original base
-          - If base is C or T (pyrimidines):
-                With prob prob_ambig: replace with 'Y'
-                Else: keep original base
-          - Any unexpected base defaults to 'N'
+    Ambiguity substitution respects compatibility rules:
+        - Each ambiguous symbol is only used if the original base belongs to
+        its definition. For example:
+            Y (C/T) may only replace C or T
+            R (A/G) may only replace A or G
+            K (G/T) may only replace G or T
+            etc.
+        - Therefore, all generated ambiguity codes reflect valid nucleotide sets.
+
+    Replacement logic:
+        • With probability `prob_N`, the base is replaced with 'N'
+        (fully ambiguous / unknown).
+        • Otherwise, with probability `prob_ambig`, the base is replaced with
+        a random compatible ambiguity symbol among:
+            R, Y, M, W, S, K, V, H, D, B
+        • If no ambiguity is introduced, the original base is kept unchanged.
 
     Args:
-        kmer (str): Input DNA k-mer (A, C, T, G).
-        prob_ambig (float): Probability of introducing IUPAC ambiguity (R/Y).
-        prob_N (float): Probability of forcing the base to 'N'.
+        kmer (str): Input DNA k-mer consisting of A, C, G, T.
+        prob_ambig (float): Probability of replacing a base with a compatible
+                            IUPAC ambiguity code.
+        prob_N (float): Probability of forcing the base to N.
 
     Returns:
-        str: The generated q-kmer.
+        str: The generated q-mer containing valid DNA/IUPAC characters.
     """
     q = []
-    for b in kmer:
-        b = b.upper()
+
+    for b in kmer.upper():
         r = random.random()
 
-        # Force N with small probability
+        # Forcer un N
         if r < prob_N:
             q.append('N')
             continue
 
-        # Purines (A/G)
-        if b in ('A', 'G'):
-            if r < prob_N + prob_ambig:
-                q.append('R')  # Ambiguous purine
-            else:
-                q.append(b)
-
-        # Pyrimidines (C/T)
-        elif b in ('C', 'T'):
-            if r < prob_N + prob_ambig:
-                q.append('Y')  # Ambiguous pyrimidine
-            else:
-                q.append(b)
-
-        # Any unknown character → N
+        # Introduire une ambiguïté valide
+        if r < prob_N + prob_ambig and b in COMPATIBLE_IUPAC:
+            q.append(random.choice(COMPATIBLE_IUPAC[b]))
         else:
-            q.append('N')
+            q.append(b)
 
     return "".join(q)
 
@@ -124,7 +129,7 @@ def fastq_to_qkmer(fastq_path, k, max_reads=None):
 if __name__ == "__main__":
     # Expect: python extract_qkmer.py <fastq> <k> [max_reads]
     if len(sys.argv) < 3:
-        print("Usage: python extract_qkmer.py <fastq> <k> [max_reads]", file=sys.stderr)
+        print("Usage: python generate_qkmer.py <fastq> <k> [max_reads]", file=sys.stderr)
         sys.exit(1)
 
     fastq = sys.argv[1]
