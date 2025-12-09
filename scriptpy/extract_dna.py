@@ -1,26 +1,6 @@
 import sys
 
-def generate_dna(seq, k):
-    """
-    Yield a cleaned DNA sequence if valid.
-
-    This function is intentionally simple: it returns the full read
-    only if:
-        - the sequence is non-empty
-        - it contains no 'N' (ambiguous nucleotide)
-
-    Note:
-        The parameter `k` is accepted for interface consistency with
-        other extractors, but not used here since we return the whole
-        read as-is.
-
-    Args:
-        seq (str): The sequence read from FASTQ.
-        k (int): k-mer length (unused).
-    
-    Yields:
-        str: The cleaned DNA sequence.
-    """
+def generate_dna(seq):
     seq = seq.strip().upper()
 
     # Only yield if the read is fully defined (no ambiguous bases)
@@ -29,22 +9,6 @@ def generate_dna(seq, k):
 
 
 def fastq_to_dna(fastq_path, k, max_reads=None):
-    """
-    Extract full-length DNA sequences from a FASTQ file.
-
-    FASTQ files are read 4 lines at a time:
-        1. @header
-        2. sequence
-        3. +
-        4. quality scores
-
-    This function prints each cleaned DNA read directly to stdout.
-
-    Args:
-        fastq_path (str): Path to the FASTQ input file.
-        k (int): Placeholder k-mer length (not used in this version).
-        max_reads (int or None): Optional limit on number of reads processed.
-    """
     k = int(k)  # kept for consistency with qkmer/kmer tools
     count_reads = 0
 
@@ -69,7 +33,7 @@ def fastq_to_dna(fastq_path, k, max_reads=None):
                 break
 
             # Emit the full sequence if valid
-            for dna in generate_dna(seq, k):
+            for dna in generate_dna(seq):
                 print(dna)
 
 

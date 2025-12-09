@@ -11,36 +11,6 @@ COMPATIBLE_IUPAC = {
 
 
 def dna_to_qkmer(kmer, prob_ambig=0.3, prob_N=0.05):
-    """
-    Convert a DNA k-mer (A/C/G/T) into a q-mer by introducing biologically valid
-        IUPAC ambiguity symbols.
-
-    Ambiguity substitution respects compatibility rules:
-        - Each ambiguous symbol is only used if the original base belongs to
-        its definition. For example:
-            Y (C/T) may only replace C or T
-            R (A/G) may only replace A or G
-            K (G/T) may only replace G or T
-            etc.
-        - Therefore, all generated ambiguity codes reflect valid nucleotide sets.
-
-    Replacement logic:
-        • With probability `prob_N`, the base is replaced with 'N'
-        (fully ambiguous / unknown).
-        • Otherwise, with probability `prob_ambig`, the base is replaced with
-        a random compatible ambiguity symbol among:
-            R, Y, M, W, S, K, V, H, D, B
-        • If no ambiguity is introduced, the original base is kept unchanged.
-
-    Args:
-        kmer (str): Input DNA k-mer consisting of A, C, G, T.
-        prob_ambig (float): Probability of replacing a base with a compatible
-                            IUPAC ambiguity code.
-        prob_N (float): Probability of forcing the base to N.
-
-    Returns:
-        str: The generated q-mer containing valid DNA/IUPAC characters.
-    """
     q = []
 
     for b in kmer.upper():
@@ -60,16 +30,6 @@ def dna_to_qkmer(kmer, prob_ambig=0.3, prob_N=0.05):
     return "".join(q)
 
 def generate_dna(seq, k):
-    """
-    Generate all clean k-mers (no 'N') from a DNA sequence.
-
-    Args:
-        seq (str): Raw DNA sequence (may contain lowercase).
-        k (int): Length of k-mers to extract.
-
-    Yields:
-        str: Clean DNA k-mer (only A, C, G, T).
-    """
     seq = seq.strip().upper()
 
     # Extract sliding window k-mers
@@ -81,23 +41,6 @@ def generate_dna(seq, k):
             yield dna
 
 def fastq_to_qkmer(fastq_path, k, max_reads=None):
-    """
-    Convert all valid DNA substrings from a FASTQ file into q-kmers.
-
-    FASTQ reading is done 4 lines at a time:
-        1. @header
-        2. sequence
-        3. +
-        4. quality scores
-
-    Args:
-        fastq_path (str): Path to the FASTQ file.
-        k (int): k-mer length.
-        max_reads (int or None): If set, stop after processing this many reads.
-
-    Output:
-        Prints each q-kmer to stdout.
-    """
     k = int(k)
     count_reads = 0
 
