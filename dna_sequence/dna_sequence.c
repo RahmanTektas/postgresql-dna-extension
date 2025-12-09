@@ -62,7 +62,7 @@ mask_to_char(uint8_t mask)
 // ---------------------------------------------------------------------------
 
 static Dna *
-dna_alloc(uint8_t length)
+dna_alloc(int32 length)
 {
     Size size = offsetof(Dna, code) + length * sizeof(uint8_t);
     Dna *dna = (Dna *) palloc0(size);
@@ -78,13 +78,14 @@ dna_parse(const char *str)
     uint8_t *data;
     size_t i;
 
-    if (len == 0 || len > UINT8_MAX)
+	// Allow lengths up to PostgreSQL's MaxAllocSize (approx 1GB)
+    if (len == 0 || len > MaxAllocSize)
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
                  errmsg("invalid input syntax for type dna: \"%s\"", str),
-                 errdetail("dna must be 1-255 bases long, current length: %li", len)));
+				 errdetail("dna cannot be empty or exceed maximum allocation size.")));
 
-    dna = dna_alloc((uint8_t) len);
+    dna = dna_alloc((int32) len);
     data = (uint8_t *) VARDATA(dna);
 
     for (i = 0; i < len; i++)

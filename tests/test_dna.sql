@@ -138,7 +138,5 @@ LIMIT 5;
 
 SELECT * FROM dna_with_length;
 
-\echo '\n--- Test 13: Length too long and empty sequence ---'
-SELECT REPEAT('A', 256)::dna;
-
+\echo '\n--- Test 13: Empty sequence ---'
 SELECT ''::dna;

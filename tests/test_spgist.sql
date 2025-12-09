@@ -4,7 +4,7 @@ CREATE EXTENSION dna_sequence;
 
 
 -- 2. SETUP ENVIRONMENT
--- SET enable_seqscan = OFF;
+SET enable_seqscan = OFF;
 
 
 \echo '========================================='
@@ -46,8 +46,6 @@ INSERT INTO kmer_test VALUES
 \echo '\n--- Test 3: Creating SP-GIST Index ---'
 CREATE INDEX idx_kmer_spgist
 ON kmer_test USING spgist (val public.kmer_spgist_ops);
-
-SET enable_seqscan = OFF;
 
 
 \echo '\n--- Test 4: Equality Search (=) ---'
