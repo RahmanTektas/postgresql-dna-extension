@@ -35,7 +35,7 @@ qkmer_matches_kmer(const uint8_t *qdata, int qlen,
 }
 
 
-// qkmer_contains()                                                          */
+// qkmer_contains()
 PG_FUNCTION_INFO_V1(qkmer_contains);
 Datum qkmer_contains(PG_FUNCTION_ARGS)
 {
@@ -51,6 +51,22 @@ Datum qkmer_contains(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(result);
 }
 
+
+// kmer_contained()
+PG_FUNCTION_INFO_V1(kmer_contained);
+Datum kmer_contained(PG_FUNCTION_ARGS)
+{
+    Kmer  *k  = PG_GETARG_KMER_P(0);
+    Qkmer *qk = PG_GETARG_QKMER_P(1);
+    bool   result;
+
+	result = qkmer_matches_kmer(QKMER_DATA(qk), QKMER_LEN(qk),
+                                KMER_DATA(k), KMER_LEN(k));
+
+    PG_FREE_IF_COPY(qk, 0);
+    PG_FREE_IF_COPY(k, 1);
+    PG_RETURN_BOOL(result);
+}
 
 // Comparison helpers
 static inline int

@@ -102,7 +102,11 @@ CREATE FUNCTION contains(qkmer, kmer)
    RETURNS boolean
    AS 'MODULE_PATHNAME', 'qkmer_contains'
    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-   
+
+CREATE FUNCTION contained(kmer, qkmer)
+   RETURNS boolean
+   AS 'MODULE_PATHNAME', 'kmer_contained'
+   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 
 /******************************************************************************
@@ -125,6 +129,10 @@ CREATE OPERATOR @> (
    PROCEDURE = contains
  );
 
+CREATE OPERATOR <@ (
+   LEFTARG = kmer, RIGHTARG = qkmer,
+   PROCEDURE = contained
+ );
 
 /******************************************************************************
  * Hash Support for GROUP BY
@@ -277,6 +285,7 @@ CREATE OPERATOR CLASS kmer_spgist_ops
     OPERATOR 1  =  (kmer, kmer),
     OPERATOR 2  ^@ (kmer, kmer),
     OPERATOR 3  @> (qkmer, kmer),
+    OPERATOR 3  <@ (kmer, qkmer),
     FUNCTION 1  spg_kmer_config(internal, internal),
     FUNCTION 2  spg_kmer_choose(internal, internal),
     FUNCTION 3  spg_kmer_picksplit(internal, internal),

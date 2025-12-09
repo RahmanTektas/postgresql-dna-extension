@@ -154,7 +154,7 @@ EXPLAIN ANALYZE
 SELECT id AS record_id,
        seq AS qkmer_pattern_match
 FROM spg_kmer_dataset
-WHERE 'RYNNN'::qkmer @> seq
+WHERE seq <@ 'RYNNN'::qkmer
 LIMIT 10;
 
 
