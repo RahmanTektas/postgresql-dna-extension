@@ -96,7 +96,7 @@ VALUES ('CGTANY'::qkmer);
 
 SELECT val AS qkmer_covering_CGTA
 FROM qkmer_with_cgtany
-WHERE val @> 'CGTA'::kmer;
+WHERE val @> 'CGTAAC'::kmer;
 
 
 \echo '\n--- Test 11: Check whether qkmers cover the kmer "CGTA" ---'
