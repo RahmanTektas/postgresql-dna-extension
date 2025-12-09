@@ -99,7 +99,7 @@ FROM qkmer_with_cgtany
 WHERE val @> 'CGTA'::kmer;
 
 
-\echo '\n--- Test 10: Check whether qkmers cover the kmer "CGTA" ---'
+\echo '\n--- Test 11: Check whether qkmers cover the kmer "CGTA" ---'
 SELECT val AS qkmer_covering_CGTA
 FROM qkmer_targets_dataset
 WHERE val @> 'CGTA'::kmer
@@ -107,7 +107,7 @@ WHERE val @> 'CGTA'::kmer
 LIMIT 5;
 
 
-\echo '\n--- Test 11: Check whether qkmers cover the kmer "TCGA" ---'
+\echo '\n--- Test 12: Check whether qkmers cover the kmer "TCGA" ---'
 -- Query: Finds qkmers in the dataset that contain/cover the exact sequence 'TCGA'
 SELECT val AS qkmer_covering_TCGA
 FROM qkmer_targets_dataset
