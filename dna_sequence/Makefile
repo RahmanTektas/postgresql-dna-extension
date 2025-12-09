@@ -72,6 +72,10 @@ test-qkmer:
 .PHONY: test-spgist
 test-spgist:
 	docker exec -i -u $(DOCKER_USER_POSTGRES) $(DOCKER_CONTAINER) psql < $(TESTS_DIR)/test_spgist.sql
+# Command to test demo only
+.PHONY: demo
+demo:
+	@bash $(TESTS_DIR)/demo.sh
 
 # Command to connect to psql
 .PHONY: psql
@@ -93,6 +97,7 @@ help:
 	@echo "  make test-kmer         - Run KMER tests only"
 	@echo "  make test-qkmer        - Run QKMER tests only"
 	@echo "  make test-spgist       - Run spgist tests only"
+	@echo "  make demo		        - Run demo tests only"
 	@echo "  make psql              - Connect to PostgreSQL"
 	@echo "  make docker-clean      - Clean all compiled files"
 	@echo "  make help              - Display this help message"
