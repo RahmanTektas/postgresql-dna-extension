@@ -138,7 +138,7 @@ Use the provided Python scripts to convert the FASTQ data into formats compatibl
 - ```python extract_dna.py data/SRR026760.fastq 0 > dna_36.txt```
 
 *Generate Q-Kmers:*
-- ```python generate_qkmer.py data/SRR026760.fastq 5 > qkmeroutput.txt```
+- ```python generate_qkmer.py data/SRR026760.fastq 32 > qkmeroutput.txt```
 
 ## Summary
 Using synthetic sequences ensures your code behaves correctly in controlled cases, while real-world SRA datasets confirm that your extension scales to real genomic data and handles biological noise. Together, these tests provide complete coverage for validating the k-mer/q-mer operators, SP-GiST indexing, and overall functionality of the DNA extension.
