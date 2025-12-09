@@ -126,12 +126,14 @@ CREATE OPERATOR ^@ (
 
 CREATE OPERATOR @> (
    LEFTARG = qkmer, RIGHTARG = kmer,
-   PROCEDURE = contains
+   PROCEDURE = contains,
+   COMMUTATOR = <@
  );
 
 CREATE OPERATOR <@ (
    LEFTARG = kmer, RIGHTARG = qkmer,
-   PROCEDURE = contained
+   PROCEDURE = contained,
+   COMMUTATOR = @>
  );
 
 /******************************************************************************
