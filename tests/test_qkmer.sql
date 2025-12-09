@@ -32,6 +32,7 @@ SELECT 'ANGT'::qkmer AS wild_N,
 \echo '\n--- Test 4: Contains Operator (@>) ---'
 SELECT 'ANGT'::qkmer @> 'ACGT'::kmer AS match_N_true,   -- true: N covers C
        'ARGT'::qkmer @> 'AGGT'::kmer AS match_R_true,   -- true: R covers G
+       'ARGT'::qkmer @> 'AGGTT'::kmer AS match_length_false,   -- false: different lengths
        'ARGT'::qkmer @> 'ATGT'::kmer AS match_R_false;  -- false: R cannot match T
 
 
