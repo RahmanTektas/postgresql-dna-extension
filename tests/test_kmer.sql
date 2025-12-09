@@ -62,6 +62,14 @@ WITH kmer_counts AS (
 )
 SELECT * FROM kmer_counts ORDER BY count DESC;
 
+EXPLAIN ANALYZE
+WITH kmer_counts AS (
+    SELECT k.kmer, count(*) as count
+    FROM generate_kmers('ACGTACGT'::dna, 3) AS k(kmer)
+    GROUP BY k.kmer
+)
+SELECT * FROM kmer_counts ORDER BY count DESC;
+
 
 -- ======================================================
 -- PART 2: DATASET GENERATED VIA generate_kmers()
@@ -130,7 +138,7 @@ GROUP BY val;
 -- ======================================================
 
 
-\echo '\n--- Test 13: Loading DNA source file into test_dna ---'
+\echo '\n--- Test 14: Loading DNA source file into test_dna ---'
 DROP TABLE IF EXISTS test_dna;
 
 CREATE TABLE test_dna(
@@ -143,7 +151,7 @@ FROM '/extension/scriptpy/dna_36.txt'
 WITH (FORMAT text);
 
 
-\echo '\n--- Test 14: Creating empty k-mer dataset table ---'
+\echo '\n--- Test 15: Creating empty k-mer dataset table ---'
 DROP TABLE IF EXISTS other_kmer_dataset;
 
 CREATE TABLE other_kmer_dataset(
@@ -152,61 +160,61 @@ CREATE TABLE other_kmer_dataset(
 );
 
 
-\echo '\n--- Test 15: Generating and inserting 4-mers ---'
+\echo '\n--- Test 16: Generating and inserting 4-mers ---'
 INSERT INTO other_kmer_dataset (seq)
 SELECT k.kmer
 FROM test_dna d,
-     generate_kmers(d.seq, 4) AS k(kmer);
+     generate_kmers(d.seq, 4) AS k(kmer) LIMIT 1000;
 
 
-\echo '\n--- Test 16: Inspecting generated 4-mers : length test expecting length of 4 code---'
+\echo '\n--- Test 17: Inspecting generated 4-mers : length test expecting length of 4 code---'
 SELECT *
 FROM other_kmer_dataset
 WHERE length(seq) = 4
 LIMIT 5;
 
 
-\echo '\n--- Test 17: Generating and inserting 10-mers ---'
+\echo '\n--- Test 18: Generating and inserting 10-mers ---'
 INSERT INTO other_kmer_dataset (seq)
 SELECT k.kmer
 FROM test_dna d,
-     generate_kmers(d.seq, 10) AS k(kmer);
+     generate_kmers(d.seq, 10) AS k(kmer) LIMIT 1000;
 
 
-\echo '\n--- Test 18: Inspecting generated 10-mers : length test expecting length of 10 code---'
+\echo '\n--- Test 19: Inspecting generated 10-mers : length test expecting length of 10 code---'
 SELECT *
 FROM other_kmer_dataset
 WHERE length(seq) = 10
 LIMIT 5;
 
-\echo '\n--- Test 19: Generating and inserting 19-mers ---'
+\echo '\n--- Test 20: Generating and inserting 19-mers ---'
 INSERT INTO other_kmer_dataset (seq)
 SELECT k.kmer
 FROM test_dna d,
-     generate_kmers(d.seq, 19) AS k(kmer);
+     generate_kmers(d.seq, 19) AS k(kmer) LIMIT 1000;
 
 
-\echo '\n--- Test 20: Inspecting generated 19-mers : length test expecting length of 19 code---'
+\echo '\n--- Test 21: Inspecting generated 19-mers : length test expecting length of 19 code---'
 SELECT *
 FROM other_kmer_dataset
 WHERE length(seq) = 19
 LIMIT 5;
 
-\echo '\n--- Test 21: Generating and inserting 33-mers ---'
+\echo '\n--- Test 22: Generating and inserting 33-mers ---'
 INSERT INTO other_kmer_dataset (seq)
 SELECT k.kmer
 FROM test_dna d,
-     generate_kmers(d.seq, 33) AS k(kmer);
+     generate_kmers(d.seq, 33) AS k(kmer) LIMIT 1000;
 
 
-\echo '\n--- Test 22: Inspecting generated 33-mers : should be empty ---'
+\echo '\n--- Test 23: Inspecting generated 33-mers : should be empty ---'
 SELECT *
 FROM other_kmer_dataset
 WHERE length(seq) = 33
 LIMIT 5;
 
-\echo '\n--- Test 23: Counting all generated kmers grouped by length ---'
-SELECT length(seq) AS kmer_length, count(*)
+\echo '\n--- Test 24: Counting all generated kmers grouped by length ---'
+SELECT length(seq) AS kmer_length, count(*) AS count_should_be_1000
 FROM other_kmer_dataset
 GROUP BY length(seq)
 ORDER BY kmer_length
