@@ -3,10 +3,10 @@ import random
 
 
 COMPATIBLE_IUPAC = {
-    'A': ['R', 'M', 'W', 'V', 'H', 'D'],  # Ambiguïtés contenant A
-    'C': ['Y', 'M', 'S', 'V', 'H', 'B'],  # Ambiguïtés contenant C
-    'G': ['R', 'S', 'K', 'V', 'D', 'B'],  # Ambiguïtés contenant G
-    'T': ['Y', 'W', 'K', 'H', 'D', 'B'],  # Ambiguïtés contenant T
+    'A': ['R', 'M', 'W', 'V', 'H', 'D'],  # Ambiguities involving A
+    'C': ['Y', 'M', 'S', 'V', 'H', 'B'],  # Ambiguities involving C
+    'G': ['R', 'S', 'K', 'V', 'D', 'B'],  # Ambiguities involving G
+    'T': ['Y', 'W', 'K', 'H', 'D', 'B'],  # Ambiguities involving T
 }
 
 
@@ -46,12 +46,12 @@ def dna_to_qkmer(kmer, prob_ambig=0.3, prob_N=0.05):
     for b in kmer.upper():
         r = random.random()
 
-        # Forcer un N
+        # Force N
         if r < prob_N:
             q.append('N')
             continue
 
-        # Introduire une ambiguïté valide
+        # Introduce a valid ambiguity
         if r < prob_N + prob_ambig and b in COMPATIBLE_IUPAC:
             q.append(random.choice(COMPATIBLE_IUPAC[b]))
         else:
