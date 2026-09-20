@@ -1,144 +1,84 @@
-# postgresql-dna-extension
-PostgreSQL extension implementing custom DNA types (dna, kmer, qkmer) for efficient genomic sequence representation and manipulation.
+# PostgreSQL DNA Extension
 
-## Makefile Usage Guide
-This extension includes a Makefile designed to simplify development inside the Docker container used for INFO-F417.
-It provides commands to compile, install, reload, test, and clean the PostgreSQL DNA extension directly inside Docker.
+A native PostgreSQL extension written in C for storing, transforming, and querying genomic sequences with domain-specific data types and index support.
 
-All commands assume that the Docker container name is:
-dna_container
-and that the extension code is mounted into:
-/extension/dna_sequence
+> Academic team project for Database Systems Architecture at ULB. Developed by a four-person team; the repository history and contributor graph preserve individual authorship.
 
-## 1. Reinstall the Extension (Compile + Install + Create)
-Recompiles the extension, installs it into PostgreSQL, syncs the Python scripts, and recreates the extension:
+## Problem
 
-- ```make docker-reinstall```
+Genomic sequences are often stored as plain text. That is convenient, but it prevents the database from understanding biological constraints or choosing specialized access paths. This extension moves that logic into PostgreSQL through native types, operators, functions, and an SP-GiST operator class.
 
-## Equivalent to manually doing:
+## What the extension provides
 
-- ```make clean```
-- ```make```
-- ```make install```
+- dna, kmer, and qkmer variable-length PostgreSQL types
+- validation and C-level input/output functions
+- sequence length, equality, prefix, containment, and k-mer generation operations
+- SQL operators backed by native C functions
+- hash and B-tree integration for exact values
+- SP-GiST indexing for prefix and pattern-oriented searches
+- utilities for transforming FASTQ data into loadable DNA and k-mer datasets
+- automated SQL tests on synthetic and real genomic inputs
 
-- ```DROP EXTENSION …; CREATE EXTENSION …;```
+## Architecture
 
-## 2. Run All Tests
+| Component | Responsibility |
+| --- | --- |
+| dna_sequence/dna_sequence.c | Type representation, parsing, validation, comparison, and sequence operations |
+| dna_sequence/spgist.c | SP-GiST callbacks for indexed search |
+| dna_sequence/dna_sequence--1.0.sql | SQL types, functions, operators, and operator classes |
+| dna_sequence/dna_sequence.h | Shared C structures and declarations |
+| tests/ | DNA, k-mer, qkmer, and SP-GiST test suites |
+| scriptpy/ | FASTQ extraction and dataset-generation utilities |
+| Makefile | Build, installation, Docker, and test automation |
 
-Runs DNA, KMER, QKMER, and SP-GiST tests in order:
-- ```make run```
+## Engineering highlights
 
-This is the recommended command to validate all parts of your implementation.
+- PostgreSQL-compatible variable-length values using varlena layouts
+- immutable, strict, and parallel-safe SQL functions where applicable
+- domain validation at the type boundary rather than in application code
+- IUPAC-aware query patterns through qkmer values
+- index-aware operators integrated with PostgreSQL query execution
+- reproducible command-line workflows for compilation and testing
 
+## Build and install
 
-## 3. Run Individual Test Suites
-DNA tests only:
+The original project was developed in a course-provided Docker image. In a compatible PostgreSQL development environment with PGXS and a C toolchain:
 
-- ```make test-dna```
+    cd dna_sequence
+    make
+    sudo make install
+    psql -d YOUR_DATABASE -c "CREATE EXTENSION dna_sequence;"
 
-KMER tests only:
+For the original Docker workflow configured by the repository:
 
-- ```make test-kmer```
+    make docker-reinstall
 
-QKMER tests only:
+## Example usage
 
-- ```make test-qkmer```
+    CREATE EXTENSION dna_sequence;
 
-SP-GiST index tests only:
+    SELECT length('ACGTACGT'::dna);
 
-- ```make test-spgist```
+    SELECT *
+    FROM generate_kmers('ACGTACGT'::dna, 3);
 
+The complete SQL surface is declared in dna_sequence/dna_sequence--1.0.sql.
 
-## 4. Sync Python Scripts into Docker
-Copies the entire scriptpy/ folder into the Docker container:
+## Tests
 
-- ```make docker-sync-scriptpy```
+Run the complete test suite:
 
-Useful when modifying:
+    make run
 
-- ```FASTQ → DNA extraction scripts```
-- ```FASTQ → k-mer / q-mer generation tools```
+Or run focused suites:
 
+    make test-dna
+    make test-kmer
+    make test-qkmer
+    make test-spgist
 
-## 5. Connect to PostgreSQL Inside Docker
-- ```make psql```
+The test utilities support both controlled synthetic sequences and public sequencing data from the NCBI Sequence Read Archive.
 
-This opens an interactive psql session as the postgres user inside the container.
+## What this project demonstrates
 
-
-## 6. Clean Compiled Files
-- ```make docker-clean```
-
-Removes all compiled artifacts (.o, .so, .bc) from the Docker extension directory.
-
-
-## 7. Full Command List
-- ```make help```
-
-Displays a summary of all available commands.
-
-# Build
-## To do once
-- install container info-h417-course-image:latest
-
-- path_to_dna_sequence
-- container_name
-
-```bash
-docker run -it \
-  --name container_name \
-  -v $(path_to_dna_sequence):/extension/dna_sequence \
-info-h417-course-image:latest
-```
-
-## To run the extension
-
-- ```docker start container_name```
-- ```docker exec -it container_name service postgresql start```
-- ```make run```
-
-
-## 
-
-# Testing with Synthetic and Real Genomic Data
-To properly validate the PostgreSQL DNA extension, you should test it using both synthetic data and real-world sequencing data. This ensures that the operators, types, and SP-GiST index perform correctly across a wide range of scenarios and scales.
-
-## 1. Synthetic DNA Sequences
-
-For development and early debugging, you can easily generate random DNA sequences of arbitrary length. Synthetic data is useful for:
-* verifying basic functionality of kmer and qkmer
-* testing boundary cases (length, invalid bases, wildcard coverage)
-* validating SP-GiST navigation on controlled patterns
-
-## 2. Real Genomic Data from NCBI SRA
-To ensure robustness on real datasets, test the extension using public sequencing reads from the NCBI Sequence Read Archive (SRA). These datasets reflect the noise, scale, and biological complexity encountered in actual genomic workloads.
-
-### Install SRA Toolkit (Prerequisite)
-If running inside the Docker container, run these commands first:
-
-- ```apt-get update```
-- ```apt-get install sra-toolkit```
-
-### Download SRA data
-First, create a specific data directory to keep the project clean:
-
-- ```mkdir -p data```
-
-Then, prefetch the data into this directory:
-
-- ```prefetch SRR026760 --output-directory data/```
-
-### Convert .sra → .fastq
-- ```fasterq-dump data/SRR026760/SRR026760.sra -O data/```
-
-### Extract clean DNA reads or k-mers
-Use the provided Python scripts to convert the FASTQ data into formats compatible with your PostgreSQL extension.
-
-*Generate DNA sequences:*
-- ```python extract_dna.py data/SRR026760.fastq 0 > dna_36.txt```
-
-*Generate Q-Kmers:*
-- ```python generate_qkmer.py data/SRR026760.fastq 32 > qkmeroutput.txt```
-
-## Summary
-Using synthetic sequences ensures your code behaves correctly in controlled cases, while real-world SRA datasets confirm that your extension scales to real genomic data and handles biological noise. Together, these tests provide complete coverage for validating the k-mer/q-mer operators, SP-GiST indexing, and overall functionality of the DNA extension.
+This project goes beyond application-level SQL: it works with PostgreSQL's extension API, memory representation, operator semantics, planner-visible index support, C integration, and reproducible database testing.
