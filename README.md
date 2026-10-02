@@ -1,84 +1,77 @@
 # PostgreSQL DNA Extension
 
-A native PostgreSQL extension written in C for storing, transforming, and querying genomic sequences with domain-specific data types and index support.
+A native PostgreSQL extension written in C for storing and querying genomic sequences.
 
-> Academic team project for Database Systems Architecture at ULB. Developed by a four-person team; the repository history and contributor graph preserve individual authorship.
+This was developed as a four-person ULB Database Systems Architecture project. The repository history preserves the individual contributions of the team members.
 
-## Problem
+## Features
 
-Genomic sequences are often stored as plain text. That is convenient, but it prevents the database from understanding biological constraints or choosing specialized access paths. This extension moves that logic into PostgreSQL through native types, operators, functions, and an SP-GiST operator class.
-
-## What the extension provides
-
-- dna, kmer, and qkmer variable-length PostgreSQL types
-- validation and C-level input/output functions
+- custom variable-length `dna`, `kmer`, and `qkmer` PostgreSQL types
+- input validation and C-level input/output functions
 - sequence length, equality, prefix, containment, and k-mer generation operations
 - SQL operators backed by native C functions
-- hash and B-tree integration for exact values
+- hash and B-tree support for exact values
 - SP-GiST indexing for prefix and pattern-oriented searches
-- utilities for transforming FASTQ data into loadable DNA and k-mer datasets
-- automated SQL tests on synthetic and real genomic inputs
+- FASTQ preprocessing utilities
+- SQL tests using synthetic and real genomic data
 
-## Architecture
+## Structure
 
-| Component | Responsibility |
-| --- | --- |
-| dna_sequence/dna_sequence.c | Type representation, parsing, validation, comparison, and sequence operations |
-| dna_sequence/spgist.c | SP-GiST callbacks for indexed search |
-| dna_sequence/dna_sequence--1.0.sql | SQL types, functions, operators, and operator classes |
-| dna_sequence/dna_sequence.h | Shared C structures and declarations |
-| tests/ | DNA, k-mer, qkmer, and SP-GiST test suites |
-| scriptpy/ | FASTQ extraction and dataset-generation utilities |
-| Makefile | Build, installation, Docker, and test automation |
+```text
+dna_sequence/
+  dna_sequence.c          type representation and sequence operations
+  spgist.c                SP-GiST callbacks
+  dna_sequence--1.0.sql   SQL types, functions, operators and operator classes
+  dna_sequence.h          shared C declarations
 
-## Engineering highlights
+tests/                    SQL test suites
+scriptpy/                 dataset preparation utilities
+Makefile                  build, Docker and test commands
+```
 
-- PostgreSQL-compatible variable-length values using varlena layouts
-- immutable, strict, and parallel-safe SQL functions where applicable
-- domain validation at the type boundary rather than in application code
-- IUPAC-aware query patterns through qkmer values
-- index-aware operators integrated with PostgreSQL query execution
-- reproducible command-line workflows for compilation and testing
+## Build
 
-## Build and install
+The original project used a course-provided Docker environment. In a compatible PostgreSQL development environment with PGXS and a C toolchain:
 
-The original project was developed in a course-provided Docker image. In a compatible PostgreSQL development environment with PGXS and a C toolchain:
+```bash
+cd dna_sequence
+make
+sudo make install
+psql -d YOUR_DATABASE -c "CREATE EXTENSION dna_sequence;"
+```
 
-    cd dna_sequence
-    make
-    sudo make install
-    psql -d YOUR_DATABASE -c "CREATE EXTENSION dna_sequence;"
+For the Docker workflow configured in the repository:
 
-For the original Docker workflow configured by the repository:
+```bash
+make docker-reinstall
+```
 
-    make docker-reinstall
+## Example
 
-## Example usage
+```sql
+CREATE EXTENSION dna_sequence;
 
-    CREATE EXTENSION dna_sequence;
+SELECT length('ACGTACGT'::dna);
 
-    SELECT length('ACGTACGT'::dna);
-
-    SELECT *
-    FROM generate_kmers('ACGTACGT'::dna, 3);
-
-The complete SQL surface is declared in dna_sequence/dna_sequence--1.0.sql.
+SELECT *
+FROM generate_kmers('ACGTACGT'::dna, 3);
+```
 
 ## Tests
 
-Run the complete test suite:
+Run the complete suite:
 
-    make run
+```bash
+make run
+```
 
-Or run focused suites:
+Focused targets are also available:
 
-    make test-dna
-    make test-kmer
-    make test-qkmer
-    make test-spgist
+```bash
+make test-dna
+make test-kmer
+make test-qkmer
+make test-spgist
+```
 
-The test utilities support both controlled synthetic sequences and public sequencing data from the NCBI Sequence Read Archive.
-
-## What this project demonstrates
-
-This project goes beyond application-level SQL: it works with PostgreSQL's extension API, memory representation, operator semantics, planner-visible index support, C integration, and reproducible database testing.
+The project works directly with PostgreSQL extension APIs, varlena data representation, SQL operator classes, and index callbacks rather than implementing the functionality only at application level.
