@@ -75,3 +75,8 @@ make test-spgist
 ```
 
 The project works directly with PostgreSQL extension APIs, varlena data representation, SQL operator classes, and index callbacks rather than implementing the functionality only at application level.
+
+
+## Continuous integration
+
+GitHub Actions builds the extension against PostgreSQL 16, installs it into a clean PostgreSQL instance, creates the extension, and runs a small SQL smoke test.
