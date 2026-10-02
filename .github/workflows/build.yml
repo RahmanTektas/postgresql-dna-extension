@@ -7,14 +7,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: postgres:16-bookworm
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install PostgreSQL development headers
+      - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-server-dev-all
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential postgresql-server-dev-16 clang llvm
 
       - name: Build extension
         run: make -C dna_sequence
