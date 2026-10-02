@@ -19,3 +19,16 @@ jobs:
 
       - name: Build extension
         run: make -C dna_sequence
+
+      - name: Install extension
+        run: make -C dna_sequence install
+
+      - name: Smoke test in PostgreSQL
+        run: |
+          mkdir -p /tmp/pgdata
+          chown postgres:postgres /tmp/pgdata
+          su postgres -c "initdb -D /tmp/pgdata"
+          su postgres -c "pg_ctl -D /tmp/pgdata -w start"
+          su postgres -c "createdb extension_test"
+          su postgres -c "psql -d extension_test -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION dna_sequence;'"
+          su postgres -c "psql -d extension_test -v ON_ERROR_STOP=1 -c \"SELECT length('ACGTACGT'::dna);\""
